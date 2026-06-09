@@ -113,6 +113,16 @@ Os requisitos abaixo definem o que o produto fará, com prioridade segundo a con
 | RF-07 | Editar/excluir avaliação | Alterar ou remover uma avaliação previamente feita. | Should |
 | RF-08 | Seleção de avatar | Escolher um avatar entre os disponíveis para personalizar o perfil. | Could |
 
+### 5.1. Regras de negócio
+
+Restrições e comportamentos que o sistema deve garantir, independentemente da interface:
+
+- **RN-01 — Uma avaliação por filme:** um usuário pode avaliar cada filme **apenas uma vez**; para mudar de opinião, edita ou exclui a avaliação existente.
+- **RN-02 — Faixa da nota:** a nota de uma avaliação deve ser um número inteiro **entre 1 e 5**.
+- **RN-03 — Avaliação exige autenticação:** apenas usuários **autenticados** podem criar, editar ou excluir avaliações.
+- **RN-04 — Propriedade da avaliação:** um usuário só pode editar ou excluir as **próprias** avaliações.
+- **RN-05 — Cálculo da nota média:** a nota média exibida na página do filme é calculada a partir de **todas as avaliações** daquele filme.
+
 ---
 
 ## 6. Requisitos Não Funcionais
