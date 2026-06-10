@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    container_name: reelrate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reelrate
+      POSTGRES_PASSWORD: reelrate
+      POSTGRES_DB: reelrate
+    # Host 5433 -> container 5432 (evita conflito com um Postgres nativo na 5432)
+    ports:
+      - "5433:5432"
+    volumes:
+      - reelrate_pgdata:/var/lib/postgresql/data
+
+volumes:
+  reelrate_pgdata:
