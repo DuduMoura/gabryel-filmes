@@ -4,11 +4,14 @@
 
 | | |
 |---|---|
-| **Versão** | 2.0 |
+| **Versão** | 2.1 |
 | **Data** | Junho de 2026 |
 | **Status** | Escopo definido — aprovado para implementação |
-| **Repositório** | github.com/anxmarks/ReelRate |
-| **Aplicação** | reel-rate.vercel.app |
+| **Documento técnico** | [DESIGN_DOC.md](./DESIGN_DOC.md) |
+
+> Este PRD foca no **produto** (problema, usuários, funcionalidades e objetivos). As
+> **decisões técnicas** (arquitetura, stack, banco de dados, autenticação e infraestrutura)
+> estão na **[Especificação Técnica / Design Doc](./DESIGN_DOC.md)**.
 
 ---
 
@@ -20,12 +23,10 @@
 4. [Escopo](#4-escopo)
 5. [Requisitos Funcionais](#5-requisitos-funcionais)
 6. [Requisitos Não Funcionais](#6-requisitos-não-funcionais)
-7. [Decisões Arquiteturais e Stack Técnica](#7-decisões-arquiteturais-e-stack-técnica)
-8. [Modelo de Dados (Conceitual)](#8-modelo-de-dados-conceitual)
-9. [Jornadas Principais do Usuário](#9-jornadas-principais-do-usuário)
-10. [Roadmap](#10-roadmap)
-11. [Riscos e Premissas](#11-riscos-e-premissas)
-12. [Equipe](#12-equipe)
+7. [Jornadas Principais do Usuário](#7-jornadas-principais-do-usuário)
+8. [Roadmap](#8-roadmap)
+9. [Riscos e Premissas](#9-riscos-e-premissas)
+10. [Equipe](#10-equipe)
 
 ---
 
@@ -35,7 +36,7 @@ O **ReelRate** é uma aplicação web voltada a amantes do cinema que combina um
 
 O catálogo é alimentado pela API pública da **TMDB** (The Movie Database), garantindo uma base ampla e atualizada de títulos, sinopses, cartazes e metadados, sem que o produto precise manter esse conteúdo manualmente.
 
-O ReelRate é deliberadamente **enxuto e focado**: o valor central está em avaliar filmes de forma simples e em consultar a opinião agregada da comunidade. A equipe optou por um escopo reduzido e uma arquitetura simples — toda a aplicação roda dentro de uma única plataforma (Vercel) — priorizando entrega rápida, baixo custo operacional e facilidade de evolução, sem abrir mão da capacidade de escalar.
+O ReelRate é deliberadamente **enxuto e focado**: o valor central está em avaliar filmes de forma simples e em consultar a opinião agregada da comunidade. A equipe optou por um escopo reduzido, priorizando entrega rápida, baixo custo operacional e facilidade de evolução, sem abrir mão da capacidade de escalar. As escolhas de implementação que sustentam essa simplicidade estão na [Especificação Técnica](./DESIGN_DOC.md).
 
 ### 1.1. Problema
 
@@ -57,7 +58,7 @@ Cinéfilos têm dificuldade em registrar o que já assistiram, guardar suas impr
 1. Permitir que qualquer usuário crie uma conta e avalie filmes com nota e comentário de forma simples.
 2. Apresentar, em cada filme, a nota média e os comentários da comunidade de maneira clara.
 3. Garantir acesso a um catálogo amplo e atualizado por meio da integração com a TMDB.
-4. Manter a aplicação simples de operar e de baixo custo, rodando inteiramente na Vercel.
+4. Manter a aplicação simples de operar e de baixo custo.
 
 ### 2.2. Métricas de sucesso
 
@@ -127,85 +128,38 @@ Restrições e comportamentos que o sistema deve garantir, independentemente da 
 
 ## 6. Requisitos Não Funcionais
 
-| Categoria | Requisito | Detalhe |
-|---|---|---|
-| Desempenho | Carregamento rápido | Cache de dados (TanStack Query) e renderização do Next.js para respostas ágeis. |
-| Escalabilidade | Arquitetura serverless | Funções da Vercel escalam automaticamente sob demanda; sessões stateless (JWT) permitem escala horizontal sem estado compartilhado. |
-| Disponibilidade | Hospedagem gerenciada | Deploy e banco na própria Vercel, com escalabilidade automática. |
-| Usabilidade | Interface responsiva | Layout adaptável a diferentes tamanhos de tela via Tailwind CSS. |
-| Segurança | Autenticação | Gestão de sessões e credenciais via NextAuth; senhas armazenadas com hash. |
-| Confiabilidade | Persistência | Banco PostgreSQL serverless (Vercel Postgres) acessado via Prisma ORM. |
-| Integração | Resiliência da TMDB | Tratamento de falhas e limites de requisição da API externa. |
-| Manutenibilidade | Tipagem estática | Base 100% em TypeScript para reduzir erros e facilitar evolução. |
-| Custo | Plataforma única | Operar tudo dentro da Vercel reduz custo e sobrecarga de gerenciar serviços externos. |
+Atributos de qualidade esperados do produto. As tecnologias e decisões que os atendem estão detalhadas na [Especificação Técnica](./DESIGN_DOC.md).
+
+| Categoria | Requisito |
+|---|---|
+| Desempenho | Páginas e listas devem carregar rapidamente, com respostas ágeis às interações. |
+| Escalabilidade | A aplicação deve suportar o crescimento do número de usuários sem necessidade de redesenho. |
+| Disponibilidade | O serviço deve permanecer disponível de forma confiável, com hospedagem gerenciada. |
+| Usabilidade | A interface deve ser responsiva e funcionar bem em diferentes tamanhos de tela. |
+| Segurança | Autenticação confiável e armazenamento seguro de credenciais dos usuários. |
+| Confiabilidade | Persistência consistente dos dados de usuários e avaliações. |
+| Integração | A indisponibilidade do catálogo externo (TMDB) não deve derrubar a aplicação. |
+| Manutenibilidade | Base de código consistente e fácil de evoluir. |
+| Custo | Operação de baixo custo, evitando complexidade e serviços desnecessários. |
 
 ---
 
-## 7. Decisões Arquiteturais e Stack Técnica
+## 7. Jornadas Principais do Usuário
 
-A equipe definiu uma arquitetura **simples e unificada**: o ReelRate é uma aplicação full-stack em **Next.js**, com front-end e back-end no mesmo projeto, hospedada e com banco de dados na própria **Vercel**. Não há serviços externos de banco.
-
-### 7.1. Decisões de simplificação
-
-- **Plataforma única (Vercel).** Toda a aplicação — front-end, rotas de API (Route Handlers / Server Actions) e banco de dados — vive dentro do projeto Vercel. Isso elimina a necessidade de orquestrar provedores separados.
-- **Banco: Vercel Postgres (no lugar do Supabase).** A persistência usa **Vercel Postgres** (Postgres serverless, provisionado dentro do próprio projeto Vercel), substituindo o Supabase. Por ser Postgres, mantém-se o Prisma e o modelo relacional, escala automaticamente sob demanda e não depende de uma conta/serviço externo.
-- **Autenticação simples por credenciais.** Login apenas com e-mail e senha via NextAuth, sem provedores externos (Google etc.), reduzindo configuração e dependências.
-- **Escopo enxuto.** Sem camada social nem listas, o domínio fica reduzido a usuários e avaliações, simplificando código, dados e manutenção.
-
-> **Por que ainda escala?** As funções serverless da Vercel autoescalam por requisição, o Vercel Postgres oferece pooling de conexões adequado a esse modelo, as sessões são stateless (JWT) e o catálogo é servido pela TMDB — ou seja, o crescimento de usuários não exige reescrita da arquitetura.
-
-### 7.2. Stack técnica
-
-| Camada | Tecnologia | Papel |
-|---|---|---|
-| Framework (front + back) | Next.js + TypeScript | Renderização, rotas, UI e API no mesmo projeto |
-| Estilização | Tailwind CSS | Sistema de estilos utilitário e responsivo |
-| Estado / dados | TanStack Query | Cache, sincronização e gestão de requisições |
-| Requisições HTTP | Axios / fetch | Cliente HTTP para a API TMDB e endpoints internos |
-| Autenticação | NextAuth | Login por e-mail e senha, sessões (JWT) |
-| ORM | Prisma | Modelagem e acesso ao banco de dados |
-| Banco de dados | Vercel Postgres | Persistência de usuários e avaliações |
-| Catálogo externo | API TMDB | Filmes, cartazes, sinopses e metadados |
-| Hospedagem | Vercel | Deploy, execução serverless e banco de dados |
-
-### 7.3. Integração com a TMDB
-
-- O catálogo (lançamentos, fichas, cartazes e sinopses) é consumido da TMDB em tempo de execução.
-- Dados próprios da aplicação (usuários e avaliações) ficam no banco interno (Vercel Postgres).
-- Cada filme é referenciado pelo seu identificador na TMDB, evitando duplicar o catálogo no banco.
-
----
-
-## 8. Modelo de Dados (Conceitual)
-
-Com o escopo enxuto, o domínio se reduz a duas entidades próprias, além da referência ao filme da TMDB.
-
-| Entidade | Descrição | Principais relações |
-|---|---|---|
-| Usuário | Conta com e-mail, senha (hash), nome e avatar | Possui várias avaliações |
-| Avaliação | Nota e comentário sobre um filme | Pertence a um usuário; referencia um filme (TMDB) por ID |
-| Filme (TMDB) | Dado externo, não persistido integralmente | Referenciado por avaliações via ID da TMDB |
-
-> Regra de integridade: um usuário possui no máximo uma avaliação por filme (pode editá-la ou excluí-la).
-
----
-
-## 9. Jornadas Principais do Usuário
-
-### 9.1. Criar conta e entrar
+### 7.1. Criar conta e entrar
 
 1. Visitante acessa o ReelRate e escolhe criar conta.
 2. Informa nome, e-mail e senha.
 3. A conta é criada e o usuário é autenticado, podendo avaliar filmes e acessar seu perfil.
 
-### 9.2. Avaliar um filme
+### 7.2. Avaliar um filme
 
 1. Usuário acessa a Home e identifica um filme de interesse (ou usa a busca).
 2. Abre a página do filme e lê a sinopse, a nota média e os comentários.
 3. Atribui uma nota e escreve um comentário.
 4. A avaliação passa a compor a nota média do filme e aparece no perfil do usuário.
 
-### 9.3. Consultar o próprio histórico
+### 7.3. Consultar o próprio histórico
 
 1. Usuário acessa seu perfil.
 2. Visualiza a lista de todas as avaliações que fez.
@@ -213,7 +167,7 @@ Com o escopo enxuto, o domínio se reduz a duas entidades próprias, além da re
 
 ---
 
-## 10. Roadmap
+## 8. Roadmap
 
 | Fase | Status | Entregas |
 |---|---|---|
@@ -224,24 +178,24 @@ Com o escopo enxuto, o domínio se reduz a duas entidades próprias, além da re
 
 ---
 
-## 11. Riscos e Premissas
+## 9. Riscos e Premissas
 
-### 11.1. Riscos
+### 9.1. Riscos
 
 - **Dependência da API TMDB:** indisponibilidade ou mudanças de termos/limites afetam o catálogo.
 - **Conteúdo inicial escasso:** poucas avaliações no começo reduzem o valor das notas médias.
 - **Moderação:** comentários abusivos exigem política e ferramentas de moderação.
 - **Privacidade:** dados de conta exigem tratamento adequado (LGPD).
 
-### 11.2. Premissas
+### 9.2. Premissas
 
 - A TMDB permanece disponível e gratuita dentro dos limites de uso do projeto.
 - Os usuários têm acesso a navegador moderno e conexão à internet.
-- A hospedagem e o banco (Vercel + Vercel Postgres) atendem à demanda inicial e escalam conforme o crescimento.
+- A infraestrutura escolhida (ver [Especificação Técnica](./DESIGN_DOC.md)) atende à demanda inicial e escala conforme o crescimento.
 
 ---
 
-## 12. Equipe
+## 10. Equipe
 
 | Nome | GitHub | Função |
 |---|---|---|
@@ -251,4 +205,4 @@ Com o escopo enxuto, o domínio se reduz a duas entidades próprias, além da re
 
 ---
 
-> Este PRD consolida as decisões da equipe sobre escopo e arquitetura do ReelRate. As funcionalidades, prioridades e a stack aqui descritas são as definições acordadas para a implementação desta versão.
+> Este PRD consolida as decisões da equipe sobre o **produto** ReelRate — problema, público, funcionalidades e objetivos —, que são as definições acordadas para esta versão. As **decisões técnicas** correspondentes estão na [Especificação Técnica (Design Doc)](./DESIGN_DOC.md).
