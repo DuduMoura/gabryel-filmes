@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // pooling (serverless)
+  directUrl = env("POSTGRES_URL_NON_POOLING") // migrações
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String // hash bcrypt
+  avatarUrl String?
+  reviews   Review[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Int // 1..5 (validado na aplicação)
+  comment     String?
+  tmdbMovieId Int // referência ao filme na TMDB
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, tmdbMovieId]) // RN-01: uma avaliação por filme por usuário
+  @@index([tmdbMovieId]) // RN-05: agregação de nota média por filme
+}
