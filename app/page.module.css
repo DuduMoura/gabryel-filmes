@@ -1,0 +1,175 @@
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes screenOn {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  28% {
+    opacity: 0.1;
+  }
+  38% {
+    opacity: 0.9;
+  }
+  44% {
+    opacity: 0.4;
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes seatReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes marqueeScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes filmScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.heroContent {
+  animation: heroReveal 1.5s ease-out 1.2s both;
+}
+
+.scrollHint {
+  animation: heroReveal 1s ease-out 3.4s both;
+}
+
+.cinemaScreen {
+  animation: screenOn 2.4s ease-out both;
+}
+
+.seatGroup {
+  animation: seatReveal 1.8s ease-out both;
+}
+
+.marqueeTrack {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marqueeScroll 24s linear infinite;
+}
+
+.filmStripTrack {
+  display: flex;
+  width: max-content;
+  animation: filmScroll 16s linear infinite;
+}
+
+.navLink {
+  transition: color 0.2s ease;
+}
+.navLink:hover {
+  color: #eeeae4;
+}
+
+.ctaPrimary {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.ctaPrimary:hover {
+  background-color: #d8483a;
+}
+
+.ctaHeroPrimary {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.ctaHeroPrimary:hover {
+  background-color: #d8483a;
+  transform: translateY(-2px);
+}
+
+.ctaHeroSecondary {
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.ctaHeroSecondary:hover {
+  border-color: rgba(238, 234, 228, 0.7);
+  background-color: rgba(238, 234, 228, 0.06);
+  transform: translateY(-2px);
+}
+
+.exploreLink {
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.exploreLink:hover {
+  color: #eeeae4;
+  border-bottom-color: rgba(238, 234, 228, 0.45);
+}
+
+.filmCard {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.filmCard:hover {
+  transform: translateY(-9px) scale(1.03);
+  box-shadow: 0 28px 52px rgba(0, 0, 0, 0.75);
+}
+
+.reviewCard {
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.reviewCard:hover {
+  border-color: rgba(192, 57, 43, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.reviewBtn {
+  transition: color 0.2s ease;
+}
+.reviewBtn:hover {
+  color: #eeeae4;
+}
+
+.diaryEntry {
+  transition: background-color 0.15s ease;
+}
+.diaryEntry:hover {
+  background-color: rgba(238, 234, 228, 0.025);
+}
+
+.listItem {
+  transition: color 0.2s ease;
+}
+.listItem:hover .listItemTitle {
+  color: #c0392b;
+}
+
+.footerLink {
+  transition: color 0.2s ease;
+}
+.footerLink:hover {
+  color: #eeeae4;
+}
