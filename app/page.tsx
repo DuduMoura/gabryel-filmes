@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./page.module.css";
 import {
@@ -85,7 +86,7 @@ type Review = {
   rating: string;
   excerpt: string;
   date: string;
-  avatarColor: string;
+  avatarUrl: string;
 };
 
 const reviews: Review[] = [
@@ -95,7 +96,7 @@ const reviews: Review[] = [
     rating: "4.5",
     excerpt: "Um estudo silencioso sobre memória e perda. A fotografia carrega cada cena com um peso quase físico.",
     date: "há 2 dias",
-    avatarColor: "#c0392b",
+    avatarUrl: "/images/usuarios/pexels-helen-ray-319601696-15572175.jpg",
   },
   {
     user: "joaopedro_filmes",
@@ -103,7 +104,7 @@ const reviews: Review[] = [
     rating: "5.0",
     excerpt: "Não esperava ser surpreendido assim. O terceiro ato muda tudo o que você pensava sobre os personagens.",
     date: "há 3 dias",
-    avatarColor: "#d4a017",
+    avatarUrl: "/images/usuarios/pexels-tomi-exposures-2159993120-37296940.jpg",
   },
   {
     user: "luisa_assiste",
@@ -111,7 +112,7 @@ const reviews: Review[] = [
     rating: "4.0",
     excerpt: "Romance sem pressa, construído em pequenos gestos. A trilha sonora faz todo o trabalho emocional.",
     date: "há 5 dias",
-    avatarColor: "#2f4a7a",
+    avatarUrl: "/images/usuarios/pexels-kema-20624777.jpg",
   },
   {
     user: "bernardo.rolo",
@@ -119,7 +120,7 @@ const reviews: Review[] = [
     rating: "3.5",
     excerpt: "Tensão bem construída na primeira hora, mas perde força no final. Ainda assim, valioso pela atmosfera.",
     date: "há 6 dias",
-    avatarColor: "#1f1f24",
+    avatarUrl: "/images/usuarios/pexels-kate-andreeshcheva-35129697-9169048.jpg",
   },
 ];
 
@@ -516,13 +517,16 @@ export default async function Home() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <span
                   style={{
+                    position: "relative",
                     width: 32,
                     height: 32,
                     borderRadius: "50%",
-                    background: review.avatarColor,
+                    overflow: "hidden",
                     flexShrink: 0,
                   }}
-                />
+                >
+                  <Image src={review.avatarUrl} alt={review.user} fill sizes="32px" style={{ objectFit: "cover" }} />
+                </span>
                 <div>
                   <p
                     style={{
