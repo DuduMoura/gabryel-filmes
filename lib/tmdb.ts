@@ -32,6 +32,20 @@ export interface TmdbPaginated<T> {
   total_results: number;
 }
 
+export interface TmdbCrewMember {
+  id: number;
+  name: string;
+  job: string;
+}
+
+export interface TmdbCredits {
+  crew: TmdbCrewMember[];
+}
+
+export interface TmdbMovieWithCredits extends TmdbMovieDetails {
+  credits: TmdbCredits;
+}
+
 type QueryParams = Record<string, string | number | undefined>;
 
 async function tmdb<T>(
@@ -73,4 +87,34 @@ export function searchMovies(query: string, page = 1) {
 /** Detalhes de um filme. Cache longo (dados estáveis). */
 export function getMovieDetails(id: number) {
   return tmdb<TmdbMovieDetails>(`/movie/${id}`, {}, 86400);
+}
+
+/** Detalhes de um filme incluindo a equipe técnica (para extrair o diretor). Cache longo. */
+function getMovieDetailsWithCredits(id: number) {
+  return tmdb<TmdbMovieWithCredits>(
+    `/movie/${id}`,
+    { append_to_response: "credits" },
+    86400,
+  );
+}
+
+/** Filmes com mais votos na TMDB, com detalhes e equipe técnica. Cache de 1h. */
+export async function getTopVotedMovies(limit = 6): Promise<TmdbMovieWithCredits[]> {
+  const { results } = await tmdb<TmdbPaginated<TmdbMovie>>(
+    "/discover/movie",
+    { sort_by: "vote_count.desc", include_adult: "false" },
+    3600,
+  );
+  const topIds = results.slice(0, limit).map((movie) => movie.id);
+  return Promise.all(topIds.map((id) => getMovieDetailsWithCredits(id)));
+}
+
+/** Nome do diretor de um filme, se a TMDB tiver essa informação. */
+export function getMovieDirector(movie: TmdbMovieWithCredits): string | null {
+  return movie.credits.crew.find((member) => member.job === "Director")?.name ?? null;
+}
+
+/** URL completa do pôster, ou null se a TMDB não tiver a imagem. */
+export function getPosterUrl(path: string | null, size: "w342" | "w500" = "w500"): string | null {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }

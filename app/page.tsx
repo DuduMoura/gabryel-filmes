@@ -1,4 +1,11 @@
+import Image from "next/image";
 import styles from "./page.module.css";
+import {
+  getMovieDirector,
+  getPosterUrl,
+  getTopVotedMovies,
+  type TmdbMovieWithCredits,
+} from "@/lib/tmdb";
 
 type Seat = { x: number; y: number; w: number; h: number; rx: number; grad: string };
 
@@ -31,23 +38,43 @@ function generateSeats(): Seat[] {
   return seats;
 }
 
-type Film = {
+type FeaturedFilm = {
+  id: number;
   title: string;
-  year: string;
-  director: string;
-  rating: string;
-  genre: string;
-  color: string;
+  posterUrl: string | null;
+  director: string | null;
+  releaseDateLabel: string | null;
+  genreLabel: string | null;
+  voteAverage: number;
 };
 
-const films: Film[] = [
-  { title: "A Sombra do Projetor", year: "2019", director: "Inês Carvalho", rating: "4.5", genre: "Drama", color: "#7a2f2f" },
-  { title: "Luzes de Outubro", year: "2021", director: "Marcos Vidal", rating: "4.0", genre: "Romance", color: "#2f4a7a" },
-  { title: "O Último Rolo", year: "2017", director: "Helena Brandt", rating: "5.0", genre: "Suspense", color: "#3f3320" },
-  { title: "Carretel Azul", year: "2023", director: "Tomás Ferro", rating: "3.5", genre: "Ficção", color: "#234a3f" },
-  { title: "Sessão das Onze", year: "2015", director: "Renata Sá", rating: "4.5", genre: "Comédia", color: "#4a2f5e" },
-  { title: "Negativo", year: "2022", director: "Diego Almeida", rating: "4.0", genre: "Terror", color: "#1f1f24" },
-];
+function toFeaturedFilm(movie: TmdbMovieWithCredits): FeaturedFilm {
+  return {
+    id: movie.id,
+    title: movie.title,
+    posterUrl: getPosterUrl(movie.poster_path),
+    director: getMovieDirector(movie),
+    releaseDateLabel: movie.release_date
+      ? new Date(movie.release_date).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : null,
+    genreLabel: movie.genres.length ? movie.genres.slice(0, 2).map((g) => g.name).join(" / ") : null,
+    voteAverage: movie.vote_average,
+  };
+}
+
+async function getFeaturedFilms(): Promise<FeaturedFilm[]> {
+  try {
+    const movies = await getTopVotedMovies(6);
+    return movies.map(toFeaturedFilm);
+  } catch (error) {
+    console.error("Falha ao buscar filmes em destaque na TMDB:", error);
+    return [];
+  }
+}
 
 type Review = {
   user: string;
@@ -246,7 +273,9 @@ function RatingStars({ rating }: { rating: string }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const featuredFilms = await getFeaturedFilms();
+
   return (
     <main style={{ background: "#0a0a0e", color: "#eeeae4", overflowX: "hidden" }}>
       {/* NAV */}
@@ -422,9 +451,9 @@ export default function Home() {
         <div className={styles.marqueeTrack}>
           {Array.from({ length: 2 }, (_, copy) => (
             <span key={copy} style={{ display: "inline-flex", alignItems: "center" }}>
-              {films.map((film, i) => (
+              {featuredFilms.map((film) => (
                 <span
-                  key={`${copy}-${i}`}
+                  key={`${copy}-${film.id}`}
                   style={{
                     fontFamily: "var(--font-space-mono), monospace",
                     fontSize: 13,
@@ -488,31 +517,60 @@ export default function Home() {
             gap: 28,
           }}
         >
-          {films.map((film) => (
-            <div key={film.title} className={styles.filmCard} style={{ cursor: "pointer" }}>
+          {featuredFilms.length === 0 && (
+            <p
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontSize: 14,
+                color: "rgba(238,234,228,0.5)",
+              }}
+            >
+              Não foi possível carregar os filmes em destaque agora. Tente novamente em breve.
+            </p>
+          )}
+          {featuredFilms.map((film) => (
+            <div key={film.id} className={styles.filmCard} style={{ cursor: "pointer" }}>
               <div
                 style={{
+                  position: "relative",
                   aspectRatio: "2 / 3",
                   borderRadius: 6,
-                  background: `linear-gradient(160deg, ${film.color} 0%, #0a0a0e 100%)`,
-                  display: "flex",
-                  alignItems: "flex-end",
-                  padding: 16,
+                  overflow: "hidden",
                   marginBottom: 14,
                   boxShadow: "0 16px 36px rgba(0,0,0,0.5)",
+                  background: film.posterUrl
+                    ? "#1a1a1e"
+                    : "linear-gradient(160deg, #3a2020 0%, #0a0a0e 100%)",
                 }}
               >
-                <span
-                  style={{
-                    fontFamily: "var(--font-space-mono), monospace",
-                    fontSize: 12,
-                    color: "rgba(238,234,228,0.7)",
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                  }}
-                >
-                  {film.genre}
-                </span>
+                {film.posterUrl && (
+                  <Image
+                    src={film.posterUrl}
+                    alt={film.title}
+                    fill
+                    sizes="(max-width: 768px) 45vw, 220px"
+                    style={{ objectFit: "cover" }}
+                  />
+                )}
+                {film.genreLabel && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 16,
+                      bottom: 16,
+                      fontFamily: "var(--font-space-mono), monospace",
+                      fontSize: 11,
+                      color: "#eeeae4",
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                      background: "rgba(10,10,14,0.65)",
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {film.genreLabel}
+                  </span>
+                )}
               </div>
               <h3
                 style={{
@@ -525,18 +583,32 @@ export default function Home() {
               >
                 {film.title}
               </h3>
-              <p
-                style={{
-                  fontFamily: "var(--font-lato), sans-serif",
-                  fontSize: 13,
-                  color: "rgba(238,234,228,0.5)",
-                  margin: "0 0 8px",
-                }}
-              >
-                {film.director} · {film.year}
-              </p>
+              {film.director && (
+                <p
+                  style={{
+                    fontFamily: "var(--font-lato), sans-serif",
+                    fontSize: 13,
+                    color: "rgba(238,234,228,0.5)",
+                    margin: "0 0 2px",
+                  }}
+                >
+                  Dirigido por {film.director}
+                </p>
+              )}
+              {film.releaseDateLabel && (
+                <p
+                  style={{
+                    fontFamily: "var(--font-lato), sans-serif",
+                    fontSize: 13,
+                    color: "rgba(238,234,228,0.5)",
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {film.releaseDateLabel}
+                </p>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <RatingStars rating={film.rating} />
+                <RatingStars rating={(film.voteAverage / 2).toFixed(1)} />
                 <span
                   style={{
                     fontFamily: "var(--font-space-mono), monospace",
@@ -544,7 +616,7 @@ export default function Home() {
                     color: "#d4a017",
                   }}
                 >
-                  {film.rating}
+                  {film.voteAverage.toFixed(1)}/10
                 </span>
               </div>
             </div>
