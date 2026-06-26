@@ -17,6 +17,13 @@ export interface TmdbMovie {
   backdrop_path: string | null;
   release_date: string;
   vote_average: number;
+  vote_count: number;
+  genre_ids: number[];
+}
+
+export interface TmdbGenre {
+  id: number;
+  name: string;
 }
 
 export interface TmdbMovieDetails extends TmdbMovie {
@@ -77,6 +84,41 @@ async function tmdb<T>(
 /** Lançamentos em cartaz. Cache curto (lista muda com frequência). */
 export function getNowPlaying(page = 1) {
   return tmdb<TmdbPaginated<TmdbMovie>>("/movie/now_playing", { page }, 600);
+}
+
+/** Filmes populares, paginados. Usado na página de exploração. Cache de 1h. */
+export function getPopularMovies(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>("/movie/popular", { page }, 3600);
+}
+
+/** Filmes mais bem avaliados da TMDB. Cache de 1h. */
+export function getTopRatedMovies(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>("/movie/top_rated", { page }, 3600);
+}
+
+/** Próximos lançamentos. Cache de 1h. */
+export function getUpcomingMovies(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>("/movie/upcoming", { page }, 3600);
+}
+
+/** Filmes em alta na semana. Cache curto (lista muda com frequência). */
+export function getTrendingMoviesWeek(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>("/trending/movie/week", { page }, 1800);
+}
+
+/** Filmes aclamados: nota alta com grande volume de votos. Cache de 1h. */
+export function getAcclaimedMovies(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>(
+    "/discover/movie",
+    { sort_by: "vote_average.desc", "vote_count.gte": 2000, include_adult: "false", page },
+    3600,
+  );
+}
+
+/** Lista de gêneros da TMDB (id → nome). Cache longo (lista quase nunca muda). */
+export async function getGenres(): Promise<TmdbGenre[]> {
+  const { genres } = await tmdb<{ genres: TmdbGenre[] }>("/genre/movie/list", {}, 86400);
+  return genres;
 }
 
 /** Busca de filmes por texto. Sem cache (resultado depende da query). */

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Link from "next/link";
 import styles from "./page.module.css";
 import {
   getMovieDirector,
@@ -6,6 +6,9 @@ import {
   getTopVotedMovies,
   type TmdbMovieWithCredits,
 } from "@/lib/tmdb";
+import { MovieCard } from "@/components/MovieCard";
+import { RatingStars } from "@/components/RatingStars";
+import { SiteNav } from "@/components/SiteNav";
 
 type Seat = { x: number; y: number; w: number; h: number; rx: number; grad: string };
 
@@ -256,87 +259,12 @@ function CinemaHallSVG() {
   );
 }
 
-function Star({ filled }: { filled: boolean }) {
-  return (
-    <span style={{ color: filled ? "#d4a017" : "rgba(212,160,23,0.25)", fontSize: "0.85em" }}>★</span>
-  );
-}
-
-function RatingStars({ rating }: { rating: string }) {
-  const value = parseFloat(rating);
-  return (
-    <span style={{ display: "inline-flex", gap: 1 }}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star key={i} filled={i + 1 <= Math.round(value)} />
-      ))}
-    </span>
-  );
-}
-
 export default async function Home() {
   const featuredFilms = await getFeaturedFilms();
 
   return (
     <main style={{ background: "#0a0a0e", color: "#eeeae4", overflowX: "hidden" }}>
-      {/* NAV */}
-      <nav
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 48px",
-          background: "linear-gradient(to bottom, rgba(10,10,14,0.97) 0%, rgba(10,10,14,0) 100%)",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-bebas), sans-serif",
-            fontSize: 28,
-            letterSpacing: 1,
-            color: "#eeeae4",
-          }}
-        >
-          Reel<span style={{ color: "#c0392b" }}>Rate</span>
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
-          {["Filmes", "Diário", "Listas", "Comunidade"].map((item) => (
-            <a
-              key={item}
-              href="#"
-              className={styles.navLink}
-              style={{
-                fontFamily: "var(--font-lato), sans-serif",
-                fontSize: 14,
-                color: "rgba(238,234,228,0.7)",
-                textDecoration: "none",
-              }}
-            >
-              {item}
-            </a>
-          ))}
-          <button
-            className={styles.ctaPrimary}
-            style={{
-              fontFamily: "var(--font-lato), sans-serif",
-              fontWeight: 700,
-              fontSize: 14,
-              color: "#fff",
-              background: "#c0392b",
-              border: "none",
-              borderRadius: 4,
-              padding: "10px 22px",
-              cursor: "pointer",
-            }}
-          >
-            Entrar
-          </button>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* HERO */}
       <section style={{ position: "relative", height: "100vh", minHeight: 640, overflow: "hidden" }}>
@@ -410,7 +338,8 @@ export default async function Home() {
             >
               Comece seu diário
             </button>
-            <button
+            <Link
+              href="/filmes"
               className={styles.ctaHeroSecondary}
               style={{
                 fontFamily: "var(--font-lato), sans-serif",
@@ -421,11 +350,12 @@ export default async function Home() {
                 border: "1px solid rgba(238,234,228,0.35)",
                 borderRadius: 4,
                 padding: "16px 36px",
-                cursor: "pointer",
+                textDecoration: "none",
+                display: "inline-block",
               }}
             >
               Explorar filmes
-            </button>
+            </Link>
           </div>
         </div>
         <div
@@ -494,8 +424,8 @@ export default async function Home() {
           >
             Em destaque
           </h2>
-          <a
-            href="#"
+          <Link
+            href="/filmes"
             className={styles.exploreLink}
             style={{
               fontFamily: "var(--font-lato), sans-serif",
@@ -507,7 +437,7 @@ export default async function Home() {
             }}
           >
             Ver todos os filmes →
-          </a>
+          </Link>
         </div>
 
         <div
@@ -529,97 +459,15 @@ export default async function Home() {
             </p>
           )}
           {featuredFilms.map((film) => (
-            <div key={film.id} className={styles.filmCard} style={{ cursor: "pointer" }}>
-              <div
-                style={{
-                  position: "relative",
-                  aspectRatio: "2 / 3",
-                  borderRadius: 6,
-                  overflow: "hidden",
-                  marginBottom: 14,
-                  boxShadow: "0 16px 36px rgba(0,0,0,0.5)",
-                  background: film.posterUrl
-                    ? "#1a1a1e"
-                    : "linear-gradient(160deg, #3a2020 0%, #0a0a0e 100%)",
-                }}
-              >
-                {film.posterUrl && (
-                  <Image
-                    src={film.posterUrl}
-                    alt={film.title}
-                    fill
-                    sizes="(max-width: 768px) 45vw, 220px"
-                    style={{ objectFit: "cover" }}
-                  />
-                )}
-                {film.genreLabel && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      left: 16,
-                      bottom: 16,
-                      fontFamily: "var(--font-space-mono), monospace",
-                      fontSize: 11,
-                      color: "#eeeae4",
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      background: "rgba(10,10,14,0.65)",
-                      padding: "4px 8px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    {film.genreLabel}
-                  </span>
-                )}
-              </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-playfair), serif",
-                  fontWeight: 600,
-                  fontSize: 18,
-                  margin: "0 0 4px",
-                  color: "#eeeae4",
-                }}
-              >
-                {film.title}
-              </h3>
-              {film.director && (
-                <p
-                  style={{
-                    fontFamily: "var(--font-lato), sans-serif",
-                    fontSize: 13,
-                    color: "rgba(238,234,228,0.5)",
-                    margin: "0 0 2px",
-                  }}
-                >
-                  Dirigido por {film.director}
-                </p>
-              )}
-              {film.releaseDateLabel && (
-                <p
-                  style={{
-                    fontFamily: "var(--font-lato), sans-serif",
-                    fontSize: 13,
-                    color: "rgba(238,234,228,0.5)",
-                    margin: "0 0 8px",
-                  }}
-                >
-                  {film.releaseDateLabel}
-                </p>
-              )}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <RatingStars rating={(film.voteAverage / 2).toFixed(1)} />
-                <span
-                  style={{
-                    fontFamily: "var(--font-space-mono), monospace",
-                    fontSize: 12,
-                    color: "#d4a017",
-                  }}
-                >
-                  {film.voteAverage.toFixed(1)}/10
-                </span>
-              </div>
-            </div>
+            <MovieCard
+              key={film.id}
+              title={film.title}
+              posterUrl={film.posterUrl}
+              genreLabel={film.genreLabel}
+              voteAverage={film.voteAverage}
+              director={film.director}
+              releaseDateLabel={film.releaseDateLabel}
+            />
           ))}
         </div>
       </section>
