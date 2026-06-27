@@ -19,6 +19,7 @@ export interface TmdbMovie {
   vote_average: number;
   vote_count: number;
   genre_ids: number[];
+  original_language: string;
 }
 
 export interface TmdbGenre {
@@ -30,6 +31,7 @@ export interface TmdbMovieDetails extends TmdbMovie {
   genres: { id: number; name: string }[];
   runtime: number | null;
   tagline: string | null;
+  production_countries: { iso_3166_1: string; name: string }[];
 }
 
 export interface TmdbPaginated<T> {
@@ -51,6 +53,48 @@ export interface TmdbCredits {
 
 export interface TmdbMovieWithCredits extends TmdbMovieDetails {
   credits: TmdbCredits;
+}
+
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+  order: number;
+}
+
+export interface TmdbReview {
+  id: string;
+  author: string;
+  content: string;
+  created_at: string;
+  author_details: { rating: number | null };
+}
+
+export interface TmdbImage {
+  file_path: string;
+}
+
+export interface TmdbReleaseDatesResult {
+  iso_3166_1: string;
+  release_dates: { certification: string; release_date: string }[];
+}
+
+export interface TmdbVideo {
+  id: string;
+  key: string;
+  site: string;
+  type: string;
+  official: boolean;
+}
+
+export interface TmdbMovieFull extends TmdbMovieDetails {
+  credits: { cast: TmdbCastMember[]; crew: TmdbCrewMember[] };
+  images: { backdrops: TmdbImage[] };
+  similar: TmdbPaginated<TmdbMovie>;
+  reviews: TmdbPaginated<TmdbReview>;
+  release_dates: { results: TmdbReleaseDatesResult[] };
+  videos: { results: TmdbVideo[] };
 }
 
 type QueryParams = Record<string, string | number | undefined>;
@@ -159,4 +203,56 @@ export function getMovieDirector(movie: TmdbMovieWithCredits): string | null {
 /** URL completa do pôster, ou null se a TMDB não tiver a imagem. */
 export function getPosterUrl(path: string | null, size: "w342" | "w500" = "w500"): string | null {
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
+}
+
+/** URL completa do backdrop, ou null se a TMDB não tiver a imagem. */
+export function getBackdropUrl(path: string | null, size: "w1280" | "original" = "w1280"): string | null {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
+}
+
+/** URL completa da foto de um membro do elenco/equipe, ou null se a TMDB não tiver a imagem. */
+export function getProfileUrl(path: string | null, size: "w185" = "w185"): string | null {
+  return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
+}
+
+/**
+ * Página individual de um filme: detalhes + elenco/equipe + imagens + similares +
+ * críticas + classificação por país, tudo em uma única chamada (append_to_response).
+ * Cache de 1h.
+ */
+export function getMovieFull(id: number) {
+  return tmdb<TmdbMovieFull>(
+    `/movie/${id}`,
+    {
+      append_to_response: "credits,images,similar,reviews,release_dates,videos",
+      include_image_language: "pt,en,null",
+    },
+    3600,
+  );
+}
+
+/** Trailer oficial (YouTube) de um filme, se a TMDB tiver essa informação. */
+export function getTrailerKey(movie: TmdbMovieFull): string | null {
+  const videos = movie.videos.results.filter((video) => video.site === "YouTube" && video.type === "Trailer");
+  const official = videos.find((video) => video.official) ?? videos[0];
+  return official?.key ?? null;
+}
+
+/** Nomes dos diretores de um filme (pode haver mais de um). */
+export function getDirectors(movie: TmdbMovieFull): string[] {
+  return movie.credits.crew.filter((member) => member.job === "Director").map((member) => member.name);
+}
+
+/** Nomes dos roteiristas de um filme (Screenplay/Writer/Story), sem duplicatas. */
+export function getWriters(movie: TmdbMovieFull): string[] {
+  const writerJobs = new Set(["Screenplay", "Writer", "Story"]);
+  const names = movie.credits.crew.filter((member) => writerJobs.has(member.job)).map((member) => member.name);
+  return Array.from(new Set(names));
+}
+
+/** Classificação indicativa brasileira do filme, se a TMDB tiver essa informação. */
+export function getBrCertification(movie: TmdbMovieFull): string | null {
+  const br = movie.release_dates.results.find((result) => result.iso_3166_1 === "BR");
+  const certification = br?.release_dates.find((entry) => entry.certification)?.certification;
+  return certification || null;
 }

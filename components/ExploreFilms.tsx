@@ -400,7 +400,12 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
               const rank = index + 1;
               const showRank = showRankBadges && rank <= 3;
               return (
-                <div key={film.id} className={styles.filmCard}>
+                <Link
+                  key={film.id}
+                  href={`/filmes/${film.id}`}
+                  className={styles.filmCard}
+                  style={{ display: "block", textDecoration: "none", color: "inherit" }}
+                >
                   <div
                     style={{
                       position: "relative",
@@ -507,7 +512,7 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
                       {formatReviews(film.reviews)}
                     </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

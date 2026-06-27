@@ -460,15 +460,16 @@ export default async function Home() {
             </p>
           )}
           {featuredFilms.map((film) => (
-            <MovieCard
-              key={film.id}
-              title={film.title}
-              posterUrl={film.posterUrl}
-              genreLabel={film.genreLabel}
-              voteAverage={film.voteAverage}
-              director={film.director}
-              releaseDateLabel={film.releaseDateLabel}
-            />
+            <Link key={film.id} href={`/filmes/${film.id}`} style={{ display: "block", textDecoration: "none" }}>
+              <MovieCard
+                title={film.title}
+                posterUrl={film.posterUrl}
+                genreLabel={film.genreLabel}
+                voteAverage={film.voteAverage}
+                director={film.director}
+                releaseDateLabel={film.releaseDateLabel}
+              />
+            </Link>
           ))}
         </div>
       </section>
