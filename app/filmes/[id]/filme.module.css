@@ -1,0 +1,88 @@
+.backLink {
+  transition: color 0.2s ease;
+}
+.backLink:hover {
+  color: #eeeae4;
+}
+
+.btnPrimary {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.btnPrimary:hover {
+  background-color: #d8483a;
+  transform: translateY(-2px);
+}
+
+.btnSecondary {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.btnSecondary:hover {
+  border-color: rgba(238, 234, 228, 0.5);
+  background-color: rgba(238, 234, 228, 0.06);
+}
+
+.iconBtn {
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.iconBtn:hover {
+  border-color: rgba(238, 234, 228, 0.5);
+  background-color: rgba(238, 234, 228, 0.06);
+  color: #eeeae4;
+}
+
+.castCard {
+  transition: transform 0.25s ease;
+}
+.castCard:hover {
+  transform: translateY(-4px);
+}
+
+.galleryItem {
+  transition: transform 0.3s ease, filter 0.3s ease;
+  filter: brightness(0.85);
+}
+.galleryItem:hover {
+  transform: scale(1.04);
+  filter: brightness(1);
+}
+
+.similarCard {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.similarCard:hover {
+  transform: translateY(-9px) scale(1.03);
+  box-shadow: 0 28px 52px rgba(0, 0, 0, 0.75);
+}
+
+.reviewCard {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.reviewCard:hover {
+  border-color: rgba(238, 234, 228, 0.15);
+  background-color: rgba(238, 234, 228, 0.04);
+}
+
+.footerLink {
+  transition: color 0.2s ease;
+}
+.footerLink:hover {
+  color: #eeeae4;
+}
+
+.scrollRow {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.scrollRow::-webkit-scrollbar {
+  height: 5px;
+}
+.scrollRow::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollRow::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+.scrollRow::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}

@@ -1,0 +1,56 @@
+.searchInput {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(192, 57, 43, 0.6);
+  background-color: rgba(238, 234, 228, 0.06);
+}
+
+.sortSelect {
+  transition: border-color 0.2s ease;
+}
+.sortSelect:focus {
+  outline: none;
+  border-color: rgba(192, 57, 43, 0.6);
+}
+
+.tabBtn {
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+.tabBtn:hover {
+  color: #eeeae4;
+  background-color: rgba(238, 234, 228, 0.05);
+}
+
+.genreChip {
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+.genreChip:hover {
+  color: #eeeae4;
+  border-color: rgba(238, 234, 228, 0.4);
+}
+
+.filmCard {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+.filmCard:hover {
+  transform: translateY(-9px) scale(1.03);
+  box-shadow: 0 28px 52px rgba(0, 0, 0, 0.75);
+}
+
+.clearBtn {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.clearBtn:hover {
+  background-color: #d8483a;
+  transform: translateY(-2px);
+}
+
+.footerLink {
+  transition: color 0.2s ease;
+}
+.footerLink:hover {
+  color: #eeeae4;
+}
