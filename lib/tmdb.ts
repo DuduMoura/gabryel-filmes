@@ -91,7 +91,6 @@ export interface TmdbVideo {
 export interface TmdbMovieFull extends TmdbMovieDetails {
   credits: { cast: TmdbCastMember[]; crew: TmdbCrewMember[] };
   images: { backdrops: TmdbImage[] };
-  similar: TmdbPaginated<TmdbMovie>;
   reviews: TmdbPaginated<TmdbReview>;
   release_dates: { results: TmdbReleaseDatesResult[] };
   videos: { results: TmdbVideo[] };
@@ -224,11 +223,36 @@ export function getMovieFull(id: number) {
   return tmdb<TmdbMovieFull>(
     `/movie/${id}`,
     {
-      append_to_response: "credits,images,similar,reviews,release_dates,videos",
+      append_to_response: "credits,images,reviews,release_dates,videos",
       include_image_language: "pt,en,null",
     },
     3600,
   );
+}
+
+/**
+ * Filmes de fato semelhantes: mesmo gênero principal e mesmo idioma original do filme,
+ * ordenados pelos mais votados. A TMDB não tem um filtro pronto pra isso (o endpoint
+ * /similar mistura gêneros e idiomas), então usamos o discover com os dois critérios.
+ * Cache de 1h.
+ */
+export async function getSimilarMovies(movie: TmdbMovieFull, limit = 8): Promise<TmdbMovie[]> {
+  const primaryGenreId = movie.genres[0]?.id;
+  if (!primaryGenreId) return [];
+
+  const { results } = await tmdb<TmdbPaginated<TmdbMovie>>(
+    "/discover/movie",
+    {
+      with_genres: primaryGenreId,
+      with_original_language: movie.original_language,
+      sort_by: "vote_count.desc",
+      "vote_count.gte": 20,
+      include_adult: "false",
+    },
+    3600,
+  );
+
+  return results.filter((result) => result.id !== movie.id).slice(0, limit);
 }
 
 /** Trailer oficial (YouTube) de um filme, se a TMDB tiver essa informação. */

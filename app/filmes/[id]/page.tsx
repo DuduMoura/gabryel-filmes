@@ -9,6 +9,7 @@ import {
   getMovieFull,
   getPosterUrl,
   getProfileUrl,
+  getSimilarMovies,
   getTrailerKey,
   getWriters,
   type TmdbMovieFull,
@@ -99,7 +100,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
   const gallery = movie.images.backdrops.slice(0, 6);
   const extraGalleryCount = movie.images.backdrops.length - gallery.length;
   const reviews = movie.reviews.results.slice(0, 3);
-  const similar = movie.similar.results.slice(0, 8);
+  const similar = await getSimilarMovies(movie).catch(() => []);
 
   const circumference = 2 * Math.PI * 50;
   const arcOffset = circumference * (1 - movie.vote_average / 10);
