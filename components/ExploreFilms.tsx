@@ -25,7 +25,7 @@ function getPageWindow(current: number, maxKnown: number, hasMore: boolean): num
 type SortBy = "rating" | "recent" | "title" | "popular";
 
 const TAB_DEFS: { id: ExploreTabId; label: string; icon: string }[] = [
-  { id: "top", label: "Melhores Avaliados", icon: "★" },
+  { id: "top", label: "Mais Avaliados", icon: "★" },
   { id: "new", label: "Lançamentos", icon: "✦" },
   { id: "week", label: "Em Alta", icon: "▲" },
   { id: "nowplay", label: "Em Cartaz", icon: "▶" },
@@ -101,7 +101,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   const [activeTab, setActiveTab] = useState<ExploreTabId>("top");
   const [activeGenre, setActiveGenre] = useState("Todos");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [sortBy, setSortBy] = useState<SortBy>("popular");
   const [isPending, startTransition] = useTransition();
   const [searchResults, setSearchResults] = useState<ExploreFilm[] | null>(null);
   const [searchPageInfo, setSearchPageInfo] = useState<SearchPageInfo | null>(null);
@@ -189,7 +189,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   });
 
   const showRankBadges =
-    !isSearchMode && activeTab === "top" && activeGenre === "Todos" && sortBy === "rating";
+    !isSearchMode && activeTab === "top" && activeGenre === "Todos" && sortBy === "popular";
 
   const isInitialSearchLoading = isSearchMode && searchResults === null;
 

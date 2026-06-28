@@ -134,9 +134,13 @@ export function getPopularMovies(page = 1) {
   return tmdb<TmdbPaginated<TmdbMovie>>("/movie/popular", { page }, 3600);
 }
 
-/** Filmes mais bem avaliados da TMDB. Cache de 1h. */
-export function getTopRatedMovies(page = 1) {
-  return tmdb<TmdbPaginated<TmdbMovie>>("/movie/top_rated", { page }, 3600);
+/** Filmes com mais avaliações (vote_count) na TMDB, paginados. Cache de 1h. */
+export function getMostReviewedMovies(page = 1) {
+  return tmdb<TmdbPaginated<TmdbMovie>>(
+    "/discover/movie",
+    { sort_by: "vote_count.desc", include_adult: "false", page },
+    3600,
+  );
 }
 
 /** Próximos lançamentos. Cache de 1h. */

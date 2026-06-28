@@ -2,9 +2,9 @@ import "server-only";
 import {
   getAcclaimedMovies,
   getGenres,
+  getMostReviewedMovies,
   getNowPlaying,
   getPosterUrl,
-  getTopRatedMovies,
   getTrendingMoviesWeek,
   getUpcomingMovies,
   searchMovies,
@@ -29,7 +29,7 @@ export type ExploreFilm = {
 export type ExplorePageInfo = Record<ExploreTabId, { page: number; totalPages: number; totalResults: number }>;
 
 const TAB_FETCHERS: Record<ExploreTabId, (page: number) => Promise<TmdbPaginated<TmdbMovie>>> = {
-  top: getTopRatedMovies,
+  top: getMostReviewedMovies,
   new: getUpcomingMovies,
   week: getTrendingMoviesWeek,
   nowplay: getNowPlaying,
