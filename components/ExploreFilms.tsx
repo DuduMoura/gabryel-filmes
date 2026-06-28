@@ -1,23 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import styles from "@/app/filmes/explore.module.css";
 import { RatingStars } from "@/components/RatingStars";
-
-export type ExploreTabId = "top" | "new" | "week" | "nowplay" | "acclaimed";
-
-export type ExploreFilm = {
-  id: number;
-  title: string;
-  year: string;
-  posterUrl: string | null;
-  rating: number;
-  reviews: number;
-  genre: string;
-  tags: ExploreTabId[];
-};
+import { loadMoreFilms } from "@/app/filmes/actions";
+import type { ExploreFilm, ExplorePageInfo, ExploreTabId } from "@/lib/explore";
 
 type SortBy = "rating" | "recent" | "title" | "popular";
 
@@ -64,24 +53,47 @@ function LogoMark({ size = 22 }: { size?: number }) {
   );
 }
 
-export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
+function mergeFilms(prev: ExploreFilm[], incoming: ExploreFilm[], tab: ExploreTabId): ExploreFilm[] {
+  const byId = new Map(prev.map((film) => [film.id, film]));
+  for (const film of incoming) {
+    const existing = byId.get(film.id);
+    if (existing) {
+      if (!existing.tags.includes(tab)) existing.tags.push(tab);
+      continue;
+    }
+    byId.set(film.id, film);
+  }
+  return Array.from(byId.values());
+}
+
+export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }: { films: ExploreFilm[]; pageInfo: ExplorePageInfo }) {
+  const [films, setFilms] = useState(initialFilms);
+  const [pageInfo, setPageInfo] = useState(initialPageInfo);
   const [activeTab, setActiveTab] = useState<ExploreTabId>("top");
   const [activeGenre, setActiveGenre] = useState("Todos");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [isLoadingMore, startLoadMore] = useTransition();
 
-  const tabs = TAB_DEFS.map((tab) => ({
-    ...tab,
-    count: films.filter((film) => film.tags.includes(tab.id)).length,
-  }));
+  const activePageInfo = pageInfo[activeTab];
+  const hasMore = activePageInfo.page < activePageInfo.totalPages;
+
+  const handleLoadMore = () => {
+    const nextPage = activePageInfo.page + 1;
+    startLoadMore(async () => {
+      const result = await loadMoreFilms(activeTab, nextPage);
+      setFilms((prev) => mergeFilms(prev, result.films, activeTab));
+      setPageInfo((prev) => ({
+        ...prev,
+        [activeTab]: { page: nextPage, totalPages: result.totalPages, totalResults: result.totalResults },
+      }));
+    });
+  };
 
   const tabFilms = films.filter((film) => film.tags.includes(activeTab));
 
-  const genreCounts = new Map<string, number>();
-  tabFilms.forEach((film) => {
-    genreCounts.set(film.genre, (genreCounts.get(film.genre) ?? 0) + 1);
-  });
-  const genres = ["Todos", ...Array.from(genreCounts.keys()).sort((a, b) => a.localeCompare(b))];
+  const genreSet = new Set(tabFilms.map((film) => film.genre));
+  const genres = ["Todos", ...Array.from(genreSet).sort((a, b) => a.localeCompare(b))];
 
   const genreFiltered =
     activeGenre === "Todos" ? tabFilms : tabFilms.filter((film) => film.genre === activeGenre);
@@ -204,7 +216,7 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
             overflowX: "auto",
           }}
         >
-          {tabs.map((tab) => {
+          {TAB_DEFS.map((tab) => {
             const isActive = tab.id === activeTab;
             return (
               <button
@@ -232,15 +244,6 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
               >
                 <span style={{ color: isActive ? "#c0392b" : "inherit", fontSize: 13 }}>{tab.icon}</span>
                 {tab.label}
-                <span
-                  style={{
-                    fontFamily: "var(--font-space-mono), monospace",
-                    fontSize: 11,
-                    color: "rgba(238,234,228,0.4)",
-                  }}
-                >
-                  {tab.count}
-                </span>
               </button>
             );
           })}
@@ -257,7 +260,6 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
         >
           {genres.map((genre) => {
             const isActive = genre === activeGenre;
-            const count = genre === "Todos" ? tabFilms.length : genreCounts.get(genre) ?? 0;
             return (
               <button
                 key={genre}
@@ -276,7 +278,7 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
                   cursor: "pointer",
                 }}
               >
-                {genre} <span style={{ opacity: 0.6 }}>{count}</span>
+                {genre}
               </button>
             );
           })}
@@ -515,6 +517,39 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {sorted.length > 0 && hasMore && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 48 }}>
+            <button
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+              className={styles.clearBtn}
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#eeeae4",
+                background: "transparent",
+                border: "1px solid rgba(238,234,228,0.25)",
+                borderRadius: 4,
+                padding: "12px 32px",
+                cursor: isLoadingMore ? "default" : "pointer",
+                opacity: isLoadingMore ? 0.6 : 1,
+              }}
+            >
+              {isLoadingMore ? "Carregando..." : "Carregar mais filmes"}
+            </button>
+            <span
+              style={{
+                fontFamily: "var(--font-space-mono), monospace",
+                fontSize: 11,
+                color: "rgba(238,234,228,0.4)",
+              }}
+            >
+              {films.filter((film) => film.tags.includes(activeTab)).length} de {activePageInfo.totalResults}
+            </span>
           </div>
         )}
       </section>
