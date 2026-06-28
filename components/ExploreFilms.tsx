@@ -9,8 +9,18 @@ import { loadMoreFilms, searchFilms } from "@/app/filmes/actions";
 import type { ExploreFilm, ExplorePageInfo, ExploreTabId } from "@/lib/explore";
 
 const SEARCH_DEBOUNCE_MS = 400;
+const PAGE_SIZE = 20;
 
 type SearchPageInfo = { page: number; totalPages: number; totalResults: number };
+
+function getPageWindow(current: number, maxKnown: number, hasMore: boolean): number[] {
+  const upper = maxKnown + (hasMore ? 1 : 0);
+  const start = Math.max(1, current - 2);
+  const end = Math.min(upper, current + 2);
+  const pages: number[] = [];
+  for (let p = start; p <= end; p++) pages.push(p);
+  return pages;
+}
 
 type SortBy = "rating" | "recent" | "title" | "popular";
 
@@ -34,6 +44,21 @@ const RANK_COLORS: Record<number, string> = { 1: "#d4a017", 2: "#c4c4c4", 3: "#b
 function formatReviews(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}mil avaliações`;
   return `${n} avaliações`;
+}
+
+function pageButtonStyle(isActive: boolean) {
+  return {
+    fontFamily: "var(--font-space-mono), monospace",
+    fontSize: 12,
+    minWidth: 32,
+    height: 32,
+    padding: "0 8px",
+    borderRadius: 6,
+    border: isActive ? "1px solid #c0392b" : "1px solid rgba(238,234,228,0.15)",
+    background: isActive ? "rgba(192,57,43,0.12)" : "transparent",
+    color: isActive ? "#eeeae4" : "rgba(238,234,228,0.6)",
+    cursor: "pointer",
+  };
 }
 
 function LogoMark({ size = 22 }: { size?: number }) {
@@ -80,6 +105,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   const [isPending, startTransition] = useTransition();
   const [searchResults, setSearchResults] = useState<ExploreFilm[] | null>(null);
   const [searchPageInfo, setSearchPageInfo] = useState<SearchPageInfo | null>(null);
+  const [displayPage, setDisplayPage] = useState(1);
   const searchRequestRef = useRef(0);
 
   const query = search.trim();
@@ -90,6 +116,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
     if (!query) {
       setSearchResults(null);
       setSearchPageInfo(null);
+      setDisplayPage(1);
       return;
     }
     const requestId = ++searchRequestRef.current;
@@ -100,6 +127,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
         setSearchResults(result.films);
         setSearchPageInfo({ page: 1, totalPages: result.totalPages, totalResults: result.totalResults });
         setActiveGenre("Todos");
+        setDisplayPage(1);
       });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -126,7 +154,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   const activePageInfo = isSearchMode ? searchPageInfo : pageInfo[activeTab];
   const hasMore = activePageInfo ? activePageInfo.page < activePageInfo.totalPages : false;
 
-  const handleLoadMore = () => {
+  const fetchNextApiPage = () => {
     if (!activePageInfo) return;
     const nextPage = activePageInfo.page + 1;
     if (isSearchMode) {
@@ -165,9 +193,27 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
 
   const isInitialSearchLoading = isSearchMode && searchResults === null;
 
+  const totalLoadedDisplayPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const canGoNext = displayPage < totalLoadedDisplayPages || hasMore;
+  const isPageLoading = isPending && displayPage > totalLoadedDisplayPages;
+  const pageItems = sorted.slice((displayPage - 1) * PAGE_SIZE, displayPage * PAGE_SIZE);
+  const pageWindow = getPageWindow(displayPage, totalLoadedDisplayPages, hasMore);
+
+  const goToPage = (target: number) => {
+    if (target < 1 || target === displayPage) return;
+    if (target <= totalLoadedDisplayPages) {
+      setDisplayPage(target);
+      return;
+    }
+    if (target !== totalLoadedDisplayPages + 1 || !hasMore) return;
+    fetchNextApiPage();
+    setDisplayPage(target);
+  };
+
   const handleClearFilters = () => {
     setActiveGenre("Todos");
     setSearch("");
+    setDisplayPage(1);
   };
 
   return (
@@ -272,6 +318,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
                   setActiveTab(tab.id);
                   setActiveGenre("Todos");
                   setSearch("");
+                  setDisplayPage(1);
                 }}
                 className={styles.tabBtn}
                 style={{
@@ -311,7 +358,10 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
             return (
               <button
                 key={genre}
-                onClick={() => setActiveGenre(genre)}
+                onClick={() => {
+                  setActiveGenre(genre);
+                  setDisplayPage(1);
+                }}
                 className={styles.genreChip}
                 style={{
                   fontFamily: "var(--font-space-mono), monospace",
@@ -368,7 +418,10 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
         </p>
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortBy)}
+          onChange={(e) => {
+            setSortBy(e.target.value as SortBy);
+            setDisplayPage(1);
+          }}
           className={styles.sortSelect}
           style={{
             fontFamily: "var(--font-lato), sans-serif",
@@ -401,6 +454,18 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
               }}
             >
               Buscando &ldquo;{query}&rdquo;...
+            </p>
+          </div>
+        ) : isPageLoading ? (
+          <div style={{ textAlign: "center", padding: "80px 0", opacity: 0.6 }}>
+            <p
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontSize: 14,
+                color: "rgba(238,234,228,0.5)",
+              }}
+            >
+              Carregando página {displayPage}...
             </p>
           </div>
         ) : sorted.length === 0 ? (
@@ -467,8 +532,8 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
               gap: 28,
             }}
           >
-            {sorted.map((film, index) => {
-              const rank = index + 1;
+            {pageItems.map((film, localIndex) => {
+              const rank = (displayPage - 1) * PAGE_SIZE + localIndex + 1;
               const showRank = showRankBadges && rank <= 3;
               return (
                 <Link
@@ -589,36 +654,56 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
           </div>
         )}
 
-        {sorted.length > 0 && hasMore && activePageInfo && (
+        {sorted.length > 0 && (totalLoadedDisplayPages > 1 || hasMore) && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 48 }}>
-            <button
-              onClick={handleLoadMore}
-              disabled={isPending}
-              className={styles.clearBtn}
-              style={{
-                fontFamily: "var(--font-lato), sans-serif",
-                fontWeight: 700,
-                fontSize: 14,
-                color: "#eeeae4",
-                background: "transparent",
-                border: "1px solid rgba(238,234,228,0.25)",
-                borderRadius: 4,
-                padding: "12px 32px",
-                cursor: isPending ? "default" : "pointer",
-                opacity: isPending ? 0.6 : 1,
-              }}
-            >
-              {isPending ? "Carregando..." : "Carregar mais filmes"}
-            </button>
-            <span
-              style={{
-                fontFamily: "var(--font-space-mono), monospace",
-                fontSize: 11,
-                color: "rgba(238,234,228,0.4)",
-              }}
-            >
-              {baseFilms.length} de {activePageInfo.totalResults}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                onClick={() => goToPage(displayPage - 1)}
+                disabled={displayPage === 1}
+                className={styles.pageBtn}
+                style={pageButtonStyle(false)}
+              >
+                ‹
+              </button>
+              {pageWindow[0] > 1 && (
+                <>
+                  <button onClick={() => goToPage(1)} className={styles.pageBtn} style={pageButtonStyle(false)}>
+                    1
+                  </button>
+                  <span style={{ color: "rgba(238,234,228,0.3)", padding: "0 2px" }}>…</span>
+                </>
+              )}
+              {pageWindow.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  disabled={isPending && p > totalLoadedDisplayPages}
+                  className={styles.pageBtn}
+                  style={pageButtonStyle(p === displayPage)}
+                >
+                  {isPending && p === displayPage + 1 && p > totalLoadedDisplayPages ? "…" : p}
+                </button>
+              ))}
+              <button
+                onClick={() => goToPage(displayPage + 1)}
+                disabled={!canGoNext}
+                className={styles.pageBtn}
+                style={pageButtonStyle(false)}
+              >
+                ›
+              </button>
+            </div>
+            {activePageInfo && (
+              <span
+                style={{
+                  fontFamily: "var(--font-space-mono), monospace",
+                  fontSize: 11,
+                  color: "rgba(238,234,228,0.4)",
+                }}
+              >
+                Página {displayPage} · {baseFilms.length} de {activePageInfo.totalResults} filmes
+              </span>
+            )}
           </div>
         )}
       </section>
