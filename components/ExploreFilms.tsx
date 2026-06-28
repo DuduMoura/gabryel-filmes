@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import styles from "@/app/filmes/explore.module.css";
 import { RatingStars } from "@/components/RatingStars";
-import { loadMoreFilms } from "@/app/filmes/actions";
+import { loadMoreFilms, searchFilms } from "@/app/filmes/actions";
 import type { ExploreFilm, ExplorePageInfo, ExploreTabId } from "@/lib/explore";
+
+const SEARCH_DEBOUNCE_MS = 400;
+
+type SearchPageInfo = { page: number; totalPages: number; totalResults: number };
 
 type SortBy = "rating" | "recent" | "title" | "popular";
 
@@ -53,12 +57,12 @@ function LogoMark({ size = 22 }: { size?: number }) {
   );
 }
 
-function mergeFilms(prev: ExploreFilm[], incoming: ExploreFilm[], tab: ExploreTabId): ExploreFilm[] {
+function mergeFilms(prev: ExploreFilm[], incoming: ExploreFilm[], tab?: ExploreTabId): ExploreFilm[] {
   const byId = new Map(prev.map((film) => [film.id, film]));
   for (const film of incoming) {
     const existing = byId.get(film.id);
     if (existing) {
-      if (!existing.tags.includes(tab)) existing.tags.push(tab);
+      if (tab && !existing.tags.includes(tab)) existing.tags.push(tab);
       continue;
     }
     byId.set(film.id, film);
@@ -73,14 +77,67 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   const [activeGenre, setActiveGenre] = useState("Todos");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("rating");
-  const [isLoadingMore, startLoadMore] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [searchResults, setSearchResults] = useState<ExploreFilm[] | null>(null);
+  const [searchPageInfo, setSearchPageInfo] = useState<SearchPageInfo | null>(null);
+  const searchRequestRef = useRef(0);
 
-  const activePageInfo = pageInfo[activeTab];
-  const hasMore = activePageInfo.page < activePageInfo.totalPages;
+  const query = search.trim();
+  const isSearchMode = query.length > 0;
+  const sortBeforeSearchRef = useRef<SortBy>(sortBy);
+
+  useEffect(() => {
+    if (!query) {
+      setSearchResults(null);
+      setSearchPageInfo(null);
+      return;
+    }
+    const requestId = ++searchRequestRef.current;
+    const timer = setTimeout(() => {
+      startTransition(async () => {
+        const result = await searchFilms(query, 1);
+        if (searchRequestRef.current !== requestId) return;
+        setSearchResults(result.films);
+        setSearchPageInfo({ page: 1, totalPages: result.totalPages, totalResults: result.totalResults });
+        setActiveGenre("Todos");
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // Busca prioriza os filmes mais votados primeiro (evita que o filme mais famoso
+  // apareça por último entre resultados com nomes parecidos). Ao sair da busca,
+  // volta pra ordenação que o usuário tinha escolhido antes.
+  useEffect(() => {
+    if (isSearchMode) {
+      setSortBy((prev) => {
+        sortBeforeSearchRef.current = prev;
+        return "popular";
+      });
+    } else {
+      setSortBy(sortBeforeSearchRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearchMode]);
+
+  const tabFilms = films.filter((film) => film.tags.includes(activeTab));
+  const baseFilms = isSearchMode ? searchResults ?? [] : tabFilms;
+  const activePageInfo = isSearchMode ? searchPageInfo : pageInfo[activeTab];
+  const hasMore = activePageInfo ? activePageInfo.page < activePageInfo.totalPages : false;
 
   const handleLoadMore = () => {
+    if (!activePageInfo) return;
     const nextPage = activePageInfo.page + 1;
-    startLoadMore(async () => {
+    if (isSearchMode) {
+      startTransition(async () => {
+        const result = await searchFilms(query, nextPage);
+        setSearchResults((prev) => mergeFilms(prev ?? [], result.films));
+        setSearchPageInfo({ page: nextPage, totalPages: result.totalPages, totalResults: result.totalResults });
+      });
+      return;
+    }
+    startTransition(async () => {
       const result = await loadMoreFilms(activeTab, nextPage);
       setFilms((prev) => mergeFilms(prev, result.films, activeTab));
       setPageInfo((prev) => ({
@@ -90,25 +147,13 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
     });
   };
 
-  const tabFilms = films.filter((film) => film.tags.includes(activeTab));
-
-  const genreSet = new Set(tabFilms.map((film) => film.genre));
+  const genreSet = new Set(baseFilms.map((film) => film.genre));
   const genres = ["Todos", ...Array.from(genreSet).sort((a, b) => a.localeCompare(b))];
 
   const genreFiltered =
-    activeGenre === "Todos" ? tabFilms : tabFilms.filter((film) => film.genre === activeGenre);
+    activeGenre === "Todos" ? baseFilms : baseFilms.filter((film) => film.genre === activeGenre);
 
-  const query = search.trim().toLowerCase();
-  const searched = query
-    ? genreFiltered.filter(
-        (film) =>
-          film.title.toLowerCase().includes(query) ||
-          film.genre.toLowerCase().includes(query) ||
-          film.year.includes(query),
-      )
-    : genreFiltered;
-
-  const sorted = [...searched].sort((a, b) => {
+  const sorted = [...genreFiltered].sort((a, b) => {
     if (sortBy === "rating") return b.rating - a.rating;
     if (sortBy === "recent") return Number(b.year) - Number(a.year);
     if (sortBy === "title") return a.title.localeCompare(b.title);
@@ -116,7 +161,9 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
   });
 
   const showRankBadges =
-    activeTab === "top" && activeGenre === "Todos" && !query && sortBy === "rating";
+    !isSearchMode && activeTab === "top" && activeGenre === "Todos" && sortBy === "rating";
+
+  const isInitialSearchLoading = isSearchMode && searchResults === null;
 
   const handleClearFilters = () => {
     setActiveGenre("Todos");
@@ -224,6 +271,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
                 onClick={() => {
                   setActiveTab(tab.id);
                   setActiveGenre("Todos");
+                  setSearch("");
                 }}
                 className={styles.tabBtn}
                 style={{
@@ -306,8 +354,17 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
             margin: 0,
           }}
         >
-          {sorted.length} {sorted.length === 1 ? "filme" : "filmes"} em{" "}
-          <span style={{ color: "#eeeae4" }}>{TAB_DEFS.find((t) => t.id === activeTab)?.label}</span>
+          {isSearchMode ? (
+            <>
+              {sorted.length} {sorted.length === 1 ? "filme" : "filmes"} encontrados para{" "}
+              <span style={{ color: "#eeeae4" }}>&ldquo;{query}&rdquo;</span>
+            </>
+          ) : (
+            <>
+              {sorted.length} {sorted.length === 1 ? "filme" : "filmes"} em{" "}
+              <span style={{ color: "#eeeae4" }}>{TAB_DEFS.find((t) => t.id === activeTab)?.label}</span>
+            </>
+          )}
         </p>
         <select
           value={sortBy}
@@ -334,7 +391,19 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
 
       {/* GRID / EMPTY STATE */}
       <section style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 48px 100px" }}>
-        {sorted.length === 0 ? (
+        {isInitialSearchLoading ? (
+          <div style={{ textAlign: "center", padding: "80px 0", opacity: 0.6 }}>
+            <p
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontSize: 14,
+                color: "rgba(238,234,228,0.5)",
+              }}
+            >
+              Buscando &ldquo;{query}&rdquo;...
+            </p>
+          </div>
+        ) : sorted.length === 0 ? (
           <div
             style={{
               display: "flex",
@@ -370,7 +439,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
                 margin: "0 0 24px",
               }}
             >
-              NENHUM FILME ENCONTRADO
+              {isSearchMode ? `NENHUM FILME ENCONTRADO PARA "${query.toUpperCase()}"` : "NENHUM FILME ENCONTRADO"}
             </h2>
             <button
               onClick={handleClearFilters}
@@ -520,11 +589,11 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
           </div>
         )}
 
-        {sorted.length > 0 && hasMore && (
+        {sorted.length > 0 && hasMore && activePageInfo && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 48 }}>
             <button
               onClick={handleLoadMore}
-              disabled={isLoadingMore}
+              disabled={isPending}
               className={styles.clearBtn}
               style={{
                 fontFamily: "var(--font-lato), sans-serif",
@@ -535,11 +604,11 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
                 border: "1px solid rgba(238,234,228,0.25)",
                 borderRadius: 4,
                 padding: "12px 32px",
-                cursor: isLoadingMore ? "default" : "pointer",
-                opacity: isLoadingMore ? 0.6 : 1,
+                cursor: isPending ? "default" : "pointer",
+                opacity: isPending ? 0.6 : 1,
               }}
             >
-              {isLoadingMore ? "Carregando..." : "Carregar mais filmes"}
+              {isPending ? "Carregando..." : "Carregar mais filmes"}
             </button>
             <span
               style={{
@@ -548,7 +617,7 @@ export function ExploreFilms({ films: initialFilms, pageInfo: initialPageInfo }:
                 color: "rgba(238,234,228,0.4)",
               }}
             >
-              {films.filter((film) => film.tags.includes(activeTab)).length} de {activePageInfo.totalResults}
+              {baseFilms.length} de {activePageInfo.totalResults}
             </span>
           </div>
         )}

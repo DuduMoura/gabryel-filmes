@@ -7,6 +7,7 @@ import {
   getTopRatedMovies,
   getTrendingMoviesWeek,
   getUpcomingMovies,
+  searchMovies,
   type TmdbGenre,
   type TmdbMovie,
   type TmdbPaginated,
@@ -41,7 +42,7 @@ function buildGenreMap(genres: TmdbGenre[]): Map<number, string> {
   return new Map(genres.map((genre) => [genre.id, genre.name]));
 }
 
-function movieToExploreFilm(movie: TmdbMovie, tag: ExploreTabId, genreMap: Map<number, string>): ExploreFilm {
+function toExploreFilm(movie: TmdbMovie, genreMap: Map<number, string>): Omit<ExploreFilm, "tags"> {
   return {
     id: movie.id,
     title: movie.title,
@@ -50,8 +51,11 @@ function movieToExploreFilm(movie: TmdbMovie, tag: ExploreTabId, genreMap: Map<n
     rating: movie.vote_average,
     reviews: movie.vote_count,
     genre: genreMap.get(movie.genre_ids[0] ?? -1) ?? "Outro",
-    tags: [tag],
   };
+}
+
+function movieToExploreFilm(movie: TmdbMovie, tag: ExploreTabId, genreMap: Map<number, string>): ExploreFilm {
+  return { ...toExploreFilm(movie, genreMap), tags: [tag] };
 }
 
 /** Primeira página de cada categoria, mesclada num catálogo único. Usado no carregamento inicial de /filmes. */
@@ -87,6 +91,20 @@ export async function getExploreCatalogPage(
   const genreMap = buildGenreMap(genres);
   return {
     films: result.results.map((movie) => movieToExploreFilm(movie, tab, genreMap)),
+    totalPages: result.total_pages,
+    totalResults: result.total_results,
+  };
+}
+
+/** Busca real na TMDB (todo o catálogo, não só os filmes já carregados). Usado pela busca em /filmes. */
+export async function searchExploreFilms(
+  query: string,
+  page = 1,
+): Promise<{ films: ExploreFilm[]; totalPages: number; totalResults: number }> {
+  const [genres, result] = await Promise.all([getGenres(), searchMovies(query, page)]);
+  const genreMap = buildGenreMap(genres);
+  return {
+    films: result.results.map((movie) => ({ ...toExploreFilm(movie, genreMap), tags: [] })),
     totalPages: result.total_pages,
     totalResults: result.total_results,
   };
