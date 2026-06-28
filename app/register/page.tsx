@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -31,65 +32,73 @@ export default function RegisterPage() {
         return;
       }
 
-      // Redireciona para a página de login após sucesso
       router.push("/login");
-    } catch (err) {
+    } catch {
       setLoading(false);
       setError("Erro de rede");
     }
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="w-full max-w-md space-y-6">
-        <h1 className="text-2xl font-bold">Criar conta</h1>
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(192,57,43,0.25),_transparent_40%),linear-gradient(135deg,_#050506,_#111114_55%,_#080809)] p-6 text-[#eeeae4]">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+        <div className="mb-8 space-y-3">
+          <p className="text-sm uppercase tracking-[0.35em] text-[#c0392b]">ReelRate</p>
+          <h1 className="text-3xl font-bold" style={{ fontFamily: "var(--font-bebas), sans-serif" }}>
+            Criar conta
+          </h1>
+          <p className="text-sm text-[#b8b0a6]">Cadastre-se para guardar suas avaliações e acompanhar seus filmes.</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nome</label>
+            <label className="mb-2 block text-sm font-medium text-[#eeeae4]">Nome</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="block w-full rounded-lg border border-[#2f2f2f] bg-[#111114] px-3 py-3 text-[#f6f1eb] outline-none transition focus:border-[#c0392b]"
+              placeholder="Seu nome"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">E-mail</label>
+            <label className="mb-2 block text-sm font-medium text-[#eeeae4]">E-mail</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="block w-full rounded-lg border border-[#2f2f2f] bg-[#111114] px-3 py-3 text-[#f6f1eb] outline-none transition focus:border-[#c0392b]"
+              placeholder="seu@email.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Senha</label>
+            <label className="mb-2 block text-sm font-medium text-[#eeeae4]">Senha</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="block w-full rounded-lg border border-[#2f2f2f] bg-[#111114] px-3 py-3 text-[#f6f1eb] outline-none transition focus:border-[#c0392b]"
+              placeholder="••••••••"
               required
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-[#ff7b72]">{error}</p>}
 
           <button
             type="submit"
-            className="w-full rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+            className="w-full rounded-lg bg-[#c0392b] px-4 py-3 font-semibold text-white transition hover:bg-[#a62f21] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loading}
           >
             {loading ? "Cadastrando..." : "Criar conta"}
           </button>
         </form>
 
-        <p className="text-sm text-gray-500">
-          Já tem conta? <a className="text-blue-600" href="/login">Entrar</a>
+        <p className="mt-6 text-sm text-[#b8b0a6]">
+          Já tem conta? <Link className="font-semibold text-[#c0392b] hover:text-[#ff6b57]" href="/login">Entrar</Link>
         </p>
       </div>
     </main>
