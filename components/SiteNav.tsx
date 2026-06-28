@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import styles from "@/app/page.module.css";
 
 const NAV_ITEMS = [
@@ -9,6 +12,9 @@ const NAV_ITEMS = [
 ] as const;
 
 export function SiteNav({ active }: { active?: "filmes" }) {
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
   return (
     <nav
       style={{
@@ -57,22 +63,45 @@ export function SiteNav({ active }: { active?: "filmes" }) {
             </Link>
           );
         })}
-        <button
-          className={styles.ctaPrimary}
-          style={{
-            fontFamily: "var(--font-lato), sans-serif",
-            fontWeight: 700,
-            fontSize: 14,
-            color: "#fff",
-            background: "#c0392b",
-            border: "none",
-            borderRadius: 4,
-            padding: "10px 22px",
-            cursor: "pointer",
-          }}
-        >
-          Entrar
-        </button>
+        {isAuthenticated ? (
+          <button
+            type="button"
+            className={styles.ctaPrimary}
+            onClick={() => signOut({ callbackUrl: "/" })}
+            style={{
+              fontFamily: "var(--font-lato), sans-serif",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#fff",
+              background: "#c0392b",
+              border: "none",
+              borderRadius: 4,
+              padding: "10px 22px",
+              cursor: "pointer",
+            }}
+          >
+            Sair
+          </button>
+        ) : (
+          <Link
+            href="/login"
+            className={styles.ctaPrimary}
+            style={{
+              fontFamily: "var(--font-lato), sans-serif",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#fff",
+              background: "#c0392b",
+              border: "none",
+              borderRadius: 4,
+              padding: "10px 22px",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            Entrar
+          </Link>
+        )}
       </div>
     </nav>
   );
