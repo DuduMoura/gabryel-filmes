@@ -24,25 +24,40 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      const res = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
 
-    setLoading(false);
+      setLoading(false);
 
-    const err = res?.error;
-    if (err) {
-      if (err === "CredentialsSignin") {
-        setError("E-mail ou senha inválidos");
-      } else {
-        setError(err);
+      if (!res) {
+        setError("Falha ao conectar ao servidor. Tente novamente.");
+        return;
       }
-      return;
-    }
 
-    router.push("/");
+      if (res.error) {
+        if (res.error === "CredentialsSignin") {
+          setError("E-mail ou senha inválidos");
+        } else {
+          setError(res.error);
+        }
+        return;
+      }
+
+      if (!res.ok) {
+        setError("Não foi possível efetuar login. Tente novamente.");
+        return;
+      }
+
+      router.push("/");
+    } catch (error) {
+      setLoading(false);
+      setError("Erro inesperado. Tente novamente mais tarde.");
+      console.error("Login error:", error);
+    }
   }
 
   return (
