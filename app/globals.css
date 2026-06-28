@@ -18,3 +18,37 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Hero cinema scene (variação "Tela como cor") — keyframes globais para uso em estilos inline */
+@keyframes rr-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+@keyframes rr-flicker {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  48% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.86;
+  }
+  70% {
+    opacity: 0.97;
+  }
+}
+@keyframes rr-dust {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  100% {
+    transform: translateY(-34px) translateX(10px);
+  }
+}

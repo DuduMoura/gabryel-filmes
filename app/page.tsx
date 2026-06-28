@@ -11,35 +11,101 @@ import { MovieCard } from "@/components/MovieCard";
 import { RatingStars } from "@/components/RatingStars";
 import { SiteNav } from "@/components/SiteNav";
 
-type Seat = { x: number; y: number; w: number; h: number; rx: number; grad: string };
+/* ---- Cena "Tela como cor": poltronas em perspectiva sob o brilho colorido da tela ---- */
 
-function generateSeats(): Seat[] {
-  const rows = [
-    { y: 514, h: 24, w: 52, gap: 8, count: 13, grad: "seat0" },
-    { y: 558, h: 28, w: 60, gap: 10, count: 13, grad: "seat1" },
-    { y: 612, h: 34, w: 70, gap: 11, count: 12, grad: "seat2" },
-    { y: 674, h: 40, w: 82, gap: 13, count: 11, grad: "seat3" },
-    { y: 748, h: 48, w: 96, gap: 15, count: 10, grad: "seat4" },
-  ];
+const SEAT_FILL = "linear-gradient(180deg,#3a1418 0%,#1a0a0c 60%,#0c0506 100%)";
+const SEAT_RIM = "rgba(232,150,96,.42)";
 
-  const seats: Seat[] = [];
-  rows.forEach((row) => {
-    const spacing = row.w + row.gap;
-    const totalWidth = row.count * spacing - row.gap;
-    const startX = 720 - Math.round(totalWidth / 2);
-    for (let i = 0; i < row.count; i++) {
-      const x = startX + i * spacing;
-      seats.push({
-        x,
-        y: row.y - row.h,
-        w: row.w,
-        h: row.h,
-        rx: Math.round(row.h * 0.4),
-        grad: row.grad,
-      });
-    }
-  });
-  return seats;
+function Seat() {
+  return (
+    <div style={{ flex: "1 1 0", minWidth: 0, display: "flex" }}>
+      <div
+        style={{
+          flex: "1 1 0",
+          minWidth: 0,
+          height: 72,
+          borderRadius: "16px 16px 5px 5px",
+          background: SEAT_FILL,
+          boxShadow: `inset 0 3px 0 ${SEAT_RIM}, inset 0 -16px 22px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.5)`,
+        }}
+      />
+    </div>
+  );
+}
+
+function SeatRows({ count = 6, perRow = 9, frontBlur = 9 }: { count?: number; perRow?: number; frontBlur?: number }) {
+  const rows = [];
+  for (let r = 0; r < count; r++) {
+    const t = r / (count - 1);
+    const scale = 1.55 - t * 1.15;
+    const y = 100 - t * 38;
+    const blur = frontBlur - t * (frontBlur - 0.4);
+    const w = 124 - t * 76;
+    rows.push(
+      <div
+        key={r}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: `${y}%`,
+          width: `${w}%`,
+          transform: `translate(-50%,-50%) scale(${scale})`,
+          display: "flex",
+          gap: 20,
+          justifyContent: "center",
+          filter: `blur(${blur}px)`,
+          zIndex: Math.round((1 - t) * 100),
+        }}
+      >
+        {Array.from({ length: perRow }, (_, s) => (
+          <Seat key={s} />
+        ))}
+      </div>,
+    );
+  }
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        WebkitMaskImage: "linear-gradient(to top, #000 64%, transparent 92%)",
+        maskImage: "linear-gradient(to top, #000 64%, transparent 92%)",
+      }}
+    >
+      {rows}
+    </div>
+  );
+}
+
+function DustMotes({ n = 10 }: { n?: number }) {
+  let seed = 91;
+  const rnd = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  const motes = [];
+  for (let i = 0; i < n; i++) {
+    const sz = 2 + rnd() * 4;
+    motes.push(
+      <div
+        key={i}
+        style={{
+          position: "absolute",
+          left: `${20 + rnd() * 60}%`,
+          top: `${8 + rnd() * 52}%`,
+          width: sz,
+          height: sz,
+          borderRadius: "50%",
+          background: "rgba(212,160,23,.5)",
+          filter: "blur(1px)",
+          opacity: 0.3 + rnd() * 0.5,
+          animation: `rr-dust ${5 + rnd() * 6}s ease-in-out ${rnd() * 4}s infinite alternate`,
+        }}
+      />,
+    );
+  }
+  return <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>{motes}</div>;
 }
 
 type FeaturedFilm = {
@@ -181,82 +247,53 @@ function FilmStripFrame({ colors, labels }: { colors: string[]; labels: string[]
   );
 }
 
-function CinemaHallSVG() {
-  const seats = generateSeats();
-
+function CinemaScreenScene() {
   return (
-    <svg
-      viewBox="0 0 1440 900"
-      preserveAspectRatio="xMidYMid slice"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-    >
-      <defs>
-        <linearGradient id="seat0" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#5e1818" />
-          <stop offset="100%" stopColor="#2e0808" />
-        </linearGradient>
-        <linearGradient id="seat1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#641c1c" />
-          <stop offset="100%" stopColor="#330a0a" />
-        </linearGradient>
-        <linearGradient id="seat2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6c2020" />
-          <stop offset="100%" stopColor="#380c0c" />
-        </linearGradient>
-        <linearGradient id="seat3" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#742424" />
-          <stop offset="100%" stopColor="#3d0e0e" />
-        </linearGradient>
-        <linearGradient id="seat4" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7c2828" />
-          <stop offset="100%" stopColor="#421010" />
-        </linearGradient>
-        <linearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0a0a0e" stopOpacity={0} />
-          <stop offset="100%" stopColor="#0a0a0e" stopOpacity={1} />
-        </linearGradient>
-      </defs>
+    <div className={styles.seatGroup} style={{ position: "absolute", inset: 0 }}>
+      {/* lavagem de cor descendo do topo (vermelho + dourado) */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse 70% 56% at 50% 4%, rgba(192,57,43,.28), transparent 60%), radial-gradient(ellipse 50% 40% at 50% 2%, rgba(212,160,23,.2), transparent 58%)",
+        }}
+      />
 
-      <rect width={1440} height={900} fill="#0a0a0e" />
-      <rect x={0} y={0} width={1440} height={56} fill="#0d0d12" />
+      {/* a tela: um brilho de cor difuso (laranja -> vermelho -> dourado) */}
+      <div
+        style={{
+          position: "absolute",
+          top: "-10%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "64%",
+          height: "56%",
+          background:
+            "radial-gradient(ellipse at 50% 60%, rgba(232,120,96,.55) 0%, rgba(192,57,43,.4) 32%, rgba(212,160,23,.2) 56%, transparent 76%)",
+          filter: "blur(26px)",
+          animation: "rr-flicker 5.5s ease-in-out infinite",
+        }}
+      />
 
-      <ellipse cx={192} cy={2} rx={90} ry={52} fill="rgba(255,248,220,0.13)" />
-      <circle cx={192} cy={16} r={5} fill="#fffce8" />
-      <ellipse cx={480} cy={2} rx={66} ry={40} fill="rgba(255,248,220,0.07)" />
-      <circle cx={480} cy={14} r={3.5} fill="#fffce8" style={{ opacity: 0.7 }} />
-      <ellipse cx={720} cy={2} rx={96} ry={58} fill="rgba(255,248,220,0.15)" />
-      <circle cx={720} cy={16} r={6} fill="#fffce8" />
-      <ellipse cx={960} cy={2} rx={66} ry={40} fill="rgba(255,248,220,0.07)" />
-      <circle cx={960} cy={14} r={3.5} fill="#fffce8" style={{ opacity: 0.7 }} />
-      <ellipse cx={1248} cy={2} rx={90} ry={52} fill="rgba(255,248,220,0.13)" />
-      <circle cx={1248} cy={16} r={5} fill="#fffce8" />
+      {/* fileiras de poltronas em perspectiva */}
+      <SeatRows />
 
-      <rect x={100} y={68} width={1240} height={388} rx={20} fill="#ebe0c8" style={{ opacity: 0.03 }} />
-      <rect x={128} y={82} width={1184} height={362} rx={12} fill="#f0e8d2" style={{ opacity: 0.04 }} />
-      <rect x={146} y={92} width={1148} height={342} rx={6} fill="#f5f0e0" style={{ opacity: 0.06 }} />
+      {/* poeira luminosa dourada flutuando no feixe */}
+      <DustMotes />
 
-      <rect x={154} y={100} width={1132} height={314} fill="#f5f0ea" className={styles.cinemaScreen} />
-      <rect x={154} y={100} width={1132} height={3} fill="rgba(255,255,255,0.7)" />
-      <rect x={154} y={100} width={1132} height={314} fill="none" stroke="rgba(120,100,80,0.25)" strokeWidth={3} />
-
-      <rect x={0} y={414} width={1440} height={486} fill="#0a0a0e" />
-
-      <g className={styles.seatGroup}>
-        {seats.map((seat, i) => (
-          <rect
-            key={i}
-            x={seat.x}
-            y={seat.y}
-            width={seat.w}
-            height={seat.h}
-            rx={seat.rx}
-            fill={`url(#${seat.grad})`}
-          />
-        ))}
-      </g>
-
-      <rect x={0} y={720} width={1440} height={180} fill="url(#bottomFade)" />
-    </svg>
+      {/* chão escurecendo em direção à base */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: "46%",
+          background: "linear-gradient(180deg, transparent, rgba(60,18,16,.4) 50%, #07070a)",
+        }}
+      />
+    </div>
   );
 }
 
@@ -268,8 +305,29 @@ export default async function Home() {
       <SiteNav />
 
       {/* HERO */}
-      <section style={{ position: "relative", height: "100vh", minHeight: 640, overflow: "hidden" }}>
-        <CinemaHallSVG />
+      <section style={{ position: "relative", height: "100vh", minHeight: 660, overflow: "hidden" }}>
+        <CinemaScreenScene />
+
+        {/* vinhetas: escurecem as bordas e abrem uma zona limpa atrás do título */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(ellipse 95% 88% at 50% 42%, rgba(10,10,14,0) 40%, rgba(10,10,14,.34) 72%, rgba(10,10,14,.86) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(ellipse 46% 34% at 50% 52%, rgba(10,10,14,.5) 0%, rgba(10,10,14,.16) 60%, rgba(10,10,14,0) 80%)",
+          }}
+        />
+
         <div
           className={styles.heroContent}
           style={{
@@ -281,30 +339,31 @@ export default async function Home() {
             alignItems: "center",
             justifyContent: "center",
             textAlign: "center",
-            padding: "0 24px",
+            padding: "0 24px 13vh",
           }}
         >
           <span
             style={{
               fontFamily: "var(--font-space-mono), monospace",
               fontSize: 13,
-              letterSpacing: 3,
+              letterSpacing: "0.42em",
+              paddingLeft: "0.42em",
               textTransform: "uppercase",
-              color: "rgba(238,234,228,0.55)",
-              marginBottom: 18,
+              color: "#d4a017",
+              marginBottom: 30,
             }}
           >
-            Seu Diário de Cinema · Your Film Diary
+            Seu diário de cinema
           </span>
           <h1
             style={{
               fontFamily: "var(--font-bebas), sans-serif",
-              fontSize: "clamp(56px, 9vw, 128px)",
-              lineHeight: 1,
-              letterSpacing: 1,
+              fontSize: "clamp(86px, 15vw, 210px)",
+              lineHeight: 0.86,
+              letterSpacing: "0.01em",
               margin: 0,
               color: "#eeeae4",
-              textShadow: "0 8px 40px rgba(0,0,0,0.6)",
+              textShadow: "0 6px 44px rgba(0,0,0,0.85), 0 2px 10px rgba(0,0,0,0.6)",
             }}
           >
             Reel<span style={{ color: "#c0392b" }}>Rate</span>
@@ -313,28 +372,31 @@ export default async function Home() {
             style={{
               fontFamily: "var(--font-playfair), serif",
               fontStyle: "italic",
-              fontSize: 20,
-              maxWidth: 520,
-              color: "rgba(238,234,228,0.78)",
-              marginTop: 22,
-              marginBottom: 36,
+              fontWeight: 500,
+              fontSize: "clamp(19px, 2.4vw, 29px)",
+              lineHeight: 1.45,
+              maxWidth: 560,
+              color: "rgba(238,234,228,0.82)",
+              margin: "26px 0 0",
+              textShadow: "0 2px 18px rgba(0,0,0,0.8)",
             }}
           >
             Cada filme que você vê conta uma história sobre quem você é.
           </p>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: 42 }}>
             <button
               className={styles.ctaHeroPrimary}
               style={{
                 fontFamily: "var(--font-lato), sans-serif",
                 fontWeight: 700,
-                fontSize: 15,
-                color: "#fff",
+                fontSize: 16,
+                color: "#eeeae4",
                 background: "#c0392b",
                 border: "none",
                 borderRadius: 4,
-                padding: "16px 36px",
+                padding: "16px 32px",
                 cursor: "pointer",
+                boxShadow: "0 10px 34px rgba(192,57,43,0.45)",
               }}
             >
               Comece seu diário
@@ -345,35 +407,50 @@ export default async function Home() {
               style={{
                 fontFamily: "var(--font-lato), sans-serif",
                 fontWeight: 700,
-                fontSize: 15,
+                fontSize: 16,
                 color: "#eeeae4",
-                background: "transparent",
-                border: "1px solid rgba(238,234,228,0.35)",
+                background: "rgba(10,10,14,0.25)",
+                border: "1px solid rgba(238,234,228,0.42)",
                 borderRadius: 4,
-                padding: "16px 36px",
+                padding: "16px 32px",
                 textDecoration: "none",
                 display: "inline-block",
+                backdropFilter: "blur(2px)",
               }}
             >
               Explorar filmes
             </Link>
           </div>
         </div>
+
         <div
           className={styles.scrollHint}
           style={{
             position: "absolute",
-            bottom: 28,
-            left: "50%",
-            transform: "translateX(-50%)",
-            fontFamily: "var(--font-space-mono), monospace",
-            fontSize: 11,
-            letterSpacing: 2,
-            color: "rgba(238,234,228,0.45)",
-            textTransform: "uppercase",
+            bottom: 24,
+            left: 0,
+            right: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            zIndex: 10,
+            pointerEvents: "none",
           }}
         >
-          Role para descobrir ↓
+          <span
+            style={{
+              fontFamily: "var(--font-space-mono), monospace",
+              fontSize: 11,
+              letterSpacing: "0.34em",
+              paddingLeft: "0.34em",
+              color: "rgba(238,234,228,0.55)",
+              textTransform: "uppercase",
+            }}
+          >
+            Role para descobrir
+          </span>
+          <span style={{ fontSize: 15, color: "#d4a017", animation: "rr-bounce 1.8s ease-in-out infinite" }}>↓</span>
         </div>
       </section>
 
