@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Bebas_Neue, Lato, Playfair_Display, Space_Mono } from "next/font/google";
+import { AuthSessionProvider } from "@/components/AuthSessionProvider";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -56,7 +57,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${bebasNeue.variable} ${lato.variable} ${playfairDisplay.variable} ${spaceMono.variable} antialiased bg-reel text-foreground`}
       >
-        {children}
+        <AuthSessionProvider>{children}</AuthSessionProvider>
       </body>
     </html>
   );
