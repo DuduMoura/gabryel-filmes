@@ -6,3 +6,11 @@
   transform: translateY(-4px);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
 }
+
+.editLink {
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.editLink:hover {
+  color: #eeeae4;
+  border-color: rgba(238, 234, 228, 0.4);
+}

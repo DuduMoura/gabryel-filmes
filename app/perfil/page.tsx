@@ -20,7 +20,7 @@ function formatDate(date: Date): string {
 
 export default async function PerfilPage() {
   const session = await requireUserSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/login?callbackUrl=/perfil");
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) redirect("/login");
@@ -80,7 +80,14 @@ export default async function PerfilPage() {
           }}
         >
           {user.avatarUrl ? (
-            <Image src={user.avatarUrl} alt={user.name} width={104} height={104} style={{ objectFit: "cover" }} />
+            // eslint-disable-next-line @next/next/no-img-element -- foto enviada pelo usuário (data URL ou host externo arbitrário)
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              width={104}
+              height={104}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           ) : (
             <span style={{ fontFamily: "var(--font-bebas), sans-serif", fontSize: 44, color: "#eeeae4" }}>
               {initial}
@@ -89,17 +96,34 @@ export default async function PerfilPage() {
         </div>
 
         <div>
-          <h1
-            style={{
-              fontFamily: "var(--font-bebas), sans-serif",
-              fontSize: 40,
-              letterSpacing: 1,
-              color: "#eeeae4",
-              margin: 0,
-            }}
-          >
-            {user.name}
-          </h1>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
+            <h1
+              style={{
+                fontFamily: "var(--font-bebas), sans-serif",
+                fontSize: 40,
+                letterSpacing: 1,
+                color: "#eeeae4",
+                margin: 0,
+              }}
+            >
+              {user.name}
+            </h1>
+            <Link
+              href="/perfil/editar"
+              className={styles.editLink}
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontSize: 13,
+                color: "rgba(238,234,228,0.55)",
+                textDecoration: "none",
+                border: "1px solid rgba(238,234,228,0.2)",
+                borderRadius: 4,
+                padding: "4px 12px",
+              }}
+            >
+              Editar perfil
+            </Link>
+          </div>
           <p
             style={{
               fontFamily: "var(--font-lato), sans-serif",

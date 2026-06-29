@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function sanitizeCallbackUrl(value: string | null): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { status } = useSession();
+  const callbackUrl = sanitizeCallbackUrl(useSearchParams().get("callbackUrl"));
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/");
+      router.replace(callbackUrl);
     }
-  }, [router, status]);
+  }, [router, status, callbackUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +58,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      router.push(callbackUrl);
     } catch (error) {
       setLoading(false);
       setError("Erro inesperado. Tente novamente mais tarde.");
@@ -112,5 +118,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -1,0 +1,33 @@
+.input {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.input:focus {
+  outline: none;
+  border-color: rgba(192, 57, 43, 0.6);
+  background-color: rgba(238, 234, 228, 0.06);
+}
+
+.saveBtn {
+  transition: background-color 0.2s ease;
+}
+.saveBtn:hover:not(:disabled) {
+  background-color: #d8483a;
+}
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cancelLink {
+  transition: color 0.2s ease;
+}
+.cancelLink:hover {
+  color: #eeeae4;
+}
+
+.avatarOption {
+  transition: box-shadow 0.2s ease;
+}
+.avatarOption:hover {
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.6) !important;
+}
