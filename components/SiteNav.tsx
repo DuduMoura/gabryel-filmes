@@ -9,10 +9,10 @@ const NAV_ITEMS = [
   { key: "filmes", label: "Filmes", href: "/filmes" },
   { key: "diario", label: "Diário", href: "#" },
   { key: "listas", label: "Listas", href: "#" },
-  { key: "comunidade", label: "Comunidade", href: "#" },
+  { key: "comunidade", label: "Comunidade", href: "/comunidade" },
 ] as const;
 
-export function SiteNav({ active }: { active?: "filmes" }) {
+export function SiteNav({ active }: { active?: "filmes" | "comunidade" }) {
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
 
