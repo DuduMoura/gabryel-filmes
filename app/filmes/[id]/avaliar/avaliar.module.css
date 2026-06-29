@@ -20,3 +20,11 @@
   background-color: #d8483a;
   transform: translateY(-2px);
 }
+
+.cancel {
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.cancel:hover {
+  border-color: rgba(238, 234, 228, 0.35);
+  color: #eeeae4;
+}
