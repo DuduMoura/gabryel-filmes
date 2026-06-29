@@ -4,3 +4,11 @@
 .tab:hover {
   color: #eeeae4 !important;
 }
+
+.card {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.card:hover {
+  border-color: rgba(238, 234, 228, 0.15);
+  background-color: rgba(238, 234, 228, 0.04);
+}
