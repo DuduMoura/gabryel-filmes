@@ -1,0 +1,22 @@
+.star {
+  transition: transform 0.15s ease;
+}
+.star:hover {
+  transform: scale(1.15);
+}
+
+.textarea {
+  transition: border-color 0.2s ease;
+}
+.textarea:focus {
+  outline: none;
+  border-color: rgba(212, 160, 23, 0.5);
+}
+
+.submit {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.submit:hover:not(:disabled) {
+  background-color: #d8483a;
+  transform: translateY(-2px);
+}

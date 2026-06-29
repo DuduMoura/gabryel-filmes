@@ -201,6 +201,26 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                 ▶ Ver trailer
               </a>
             )}
+            <Link
+              href={`/filmes/${movie.id}/avaliar`}
+              className={styles.btnRate}
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#d4a017",
+                background: "transparent",
+                border: "1px solid #d4a017",
+                borderRadius: 4,
+                padding: "14px 28px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              ★ Avaliar
+            </Link>
             <button
               className={styles.btnSecondary}
               style={{
