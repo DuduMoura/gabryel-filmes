@@ -1,0 +1,8 @@
+.reviewCard {
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.reviewCard:hover {
+  border-color: rgba(192, 57, 43, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
