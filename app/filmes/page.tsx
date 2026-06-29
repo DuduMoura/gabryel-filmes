@@ -9,7 +9,9 @@ import {
   getUpcomingMovies,
   type TmdbGenre,
   type TmdbMovie,
+  type TmdbPaginated,
 } from "@/lib/tmdb";
+import { getPlatformRatings } from "@/lib/reviews";
 import { ExploreFilms, type ExploreFilm, type ExploreTabId } from "@/components/ExploreFilms";
 import { SiteNav } from "@/components/SiteNav";
 
@@ -47,26 +49,51 @@ function mergeIntoCatalog(
   }
 }
 
+// Quantas páginas da TMDB buscar por categoria (cada página = 20 filmes).
+const PAGES_PER_CATEGORY = 5;
+
+/** Busca várias páginas de um endpoint e concatena os resultados. */
+async function fetchPages(
+  fetcher: (page: number) => Promise<TmdbPaginated<TmdbMovie>>,
+  pages: number,
+): Promise<TmdbMovie[]> {
+  const responses = await Promise.all(
+    Array.from({ length: pages }, (_, i) => fetcher(i + 1)),
+  );
+  return responses.flatMap((response) => response.results);
+}
+
 async function getExploreFilms(): Promise<ExploreFilm[]> {
   const [genres, topRated, upcoming, trending, nowPlaying, acclaimed] = await Promise.all([
     getGenres(),
-    getTopRatedMovies(),
-    getUpcomingMovies(),
-    getTrendingMoviesWeek(),
-    getNowPlaying(),
-    getAcclaimedMovies(),
+    fetchPages(getTopRatedMovies, PAGES_PER_CATEGORY),
+    fetchPages(getUpcomingMovies, PAGES_PER_CATEGORY),
+    fetchPages(getTrendingMoviesWeek, PAGES_PER_CATEGORY),
+    fetchPages(getNowPlaying, PAGES_PER_CATEGORY),
+    fetchPages(getAcclaimedMovies, PAGES_PER_CATEGORY),
   ]);
 
   const genreMap = buildGenreMap(genres);
   const catalog = new Map<number, ExploreFilm>();
 
-  mergeIntoCatalog(catalog, topRated.results, "top", genreMap);
-  mergeIntoCatalog(catalog, upcoming.results, "new", genreMap);
-  mergeIntoCatalog(catalog, trending.results, "week", genreMap);
-  mergeIntoCatalog(catalog, nowPlaying.results, "nowplay", genreMap);
-  mergeIntoCatalog(catalog, acclaimed.results, "acclaimed", genreMap);
+  mergeIntoCatalog(catalog, topRated, "top", genreMap);
+  mergeIntoCatalog(catalog, upcoming, "new", genreMap);
+  mergeIntoCatalog(catalog, trending, "week", genreMap);
+  mergeIntoCatalog(catalog, nowPlaying, "nowplay", genreMap);
+  mergeIntoCatalog(catalog, acclaimed, "acclaimed", genreMap);
 
-  return Array.from(catalog.values());
+  const films = Array.from(catalog.values());
+
+  // Substitui a nota da TMDB pela nota própria da plataforma (média das avaliações
+  // dos usuários). Filmes ainda sem avaliações ficam com nota 0 / nenhuma avaliação.
+  const platformRatings = await getPlatformRatings(films.map((film) => film.id));
+  films.forEach((film) => {
+    const platform = platformRatings.get(film.id);
+    film.rating = platform?.average ?? 0;
+    film.reviews = platform?.count ?? 0;
+  });
+
+  return films;
 }
 
 export default async function FilmesPage() {

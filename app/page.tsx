@@ -2,11 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import styles from "./page.module.css";
 import {
+  getMovieDetails,
   getMovieDirector,
   getPosterUrl,
   getTopVotedMovies,
   type TmdbMovieWithCredits,
 } from "@/lib/tmdb";
+import { prisma } from "@/lib/prisma";
+import { getPlatformRatings } from "@/lib/reviews";
 import { MovieCard } from "@/components/MovieCard";
 import { RatingStars } from "@/components/RatingStars";
 import { SiteNav } from "@/components/SiteNav";
@@ -138,7 +141,7 @@ function toFeaturedFilm(movie: TmdbMovieWithCredits): FeaturedFilm {
 
 async function getFeaturedFilms(): Promise<FeaturedFilm[]> {
   try {
-    const movies = await getTopVotedMovies(6);
+    const movies = await getTopVotedMovies(8);
     return movies.map(toFeaturedFilm);
   } catch (error) {
     console.error("Falha ao buscar filmes em destaque na TMDB:", error);
@@ -147,48 +150,80 @@ async function getFeaturedFilms(): Promise<FeaturedFilm[]> {
 }
 
 type Review = {
-  user: string;
+  id: string;
+  userName: string;
+  userAvatarUrl: string | null;
   filmTitle: string;
-  rating: string;
+  movieId: number;
+  rating: number;
   excerpt: string;
-  date: string;
-  avatarUrl: string;
+  createdAtIso: string;
 };
 
-const reviews: Review[] = [
-  {
-    user: "marina.cine",
-    filmTitle: "A Sombra do Projetor",
-    rating: "4.5",
-    excerpt: "Um estudo silencioso sobre memória e perda. A fotografia carrega cada cena com um peso quase físico.",
-    date: "há 2 dias",
-    avatarUrl: "/images/usuarios/pexels-helen-ray-319601696-15572175.jpg",
-  },
-  {
-    user: "joaopedro_filmes",
-    filmTitle: "O Último Rolo",
-    rating: "5.0",
-    excerpt: "Não esperava ser surpreendido assim. O terceiro ato muda tudo o que você pensava sobre os personagens.",
-    date: "há 3 dias",
-    avatarUrl: "/images/usuarios/pexels-tomi-exposures-2159993120-37296940.jpg",
-  },
-  {
-    user: "luisa_assiste",
-    filmTitle: "Luzes de Outubro",
-    rating: "4.0",
-    excerpt: "Romance sem pressa, construído em pequenos gestos. A trilha sonora faz todo o trabalho emocional.",
-    date: "há 5 dias",
-    avatarUrl: "/images/usuarios/pexels-kema-20624777.jpg",
-  },
-  {
-    user: "bernardo.rolo",
-    filmTitle: "Negativo",
-    rating: "3.5",
-    excerpt: "Tensão bem construída na primeira hora, mas perde força no final. Ainda assim, valioso pela atmosfera.",
-    date: "há 6 dias",
-    avatarUrl: "/images/usuarios/pexels-kate-andreeshcheva-35129697-9169048.jpg",
-  },
-];
+const REVIEW_AVATAR_PALETTE = ["#c0392b", "#2c5f6f", "#8a6d1f", "#5c4a8a", "#3d7a4a"];
+
+function reviewAvatarColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash + seed.charCodeAt(i)) % REVIEW_AVATAR_PALETTE.length;
+  return REVIEW_AVATAR_PALETTE[hash];
+}
+
+function reviewInitial(name: string): string {
+  return name.charAt(0).toUpperCase() || "?";
+}
+
+function formatRelativeDate(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "hoje";
+  if (days === 1) return "há 1 dia";
+  if (days < 30) return `há ${days} dias`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "há 1 mês";
+  if (months < 12) return `há ${months} meses`;
+  const years = Math.floor(days / 365);
+  return years === 1 ? "há 1 ano" : `há ${years} anos`;
+}
+
+/** Críticas mais recentes da plataforma (com comentário), para a vitrine da home. */
+async function getRecentReviews(): Promise<Review[]> {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { comment: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { user: true },
+    });
+
+    const titlesById = new Map<number, string>();
+    await Promise.all(
+      reviews.map(async (review) => {
+        if (titlesById.has(review.tmdbMovieId)) return;
+        try {
+          const movie = await getMovieDetails(review.tmdbMovieId);
+          titlesById.set(review.tmdbMovieId, movie.title);
+        } catch (error) {
+          console.error(`Falha ao buscar o filme ${review.tmdbMovieId} na TMDB:`, error);
+        }
+      }),
+    );
+
+    return reviews
+      .filter((review) => review.comment && review.comment.trim().length > 0)
+      .map((review) => ({
+        id: review.id,
+        userName: review.user.name,
+        userAvatarUrl: review.user.avatarUrl,
+        filmTitle: titlesById.get(review.tmdbMovieId) ?? `Filme #${review.tmdbMovieId}`,
+        movieId: review.tmdbMovieId,
+        rating: review.rating,
+        excerpt: review.comment as string,
+        createdAtIso: review.createdAt.toISOString(),
+      }));
+  } catch (error) {
+    console.error("Falha ao buscar críticas recentes:", error);
+    return [];
+  }
+}
 
 type DiaryEntry = {
   day: string;
@@ -298,7 +333,11 @@ function CinemaScreenScene() {
 }
 
 export default async function Home() {
-  const featuredFilms = await getFeaturedFilms();
+  const [featuredFilms, recentReviews] = await Promise.all([
+    getFeaturedFilms(),
+    getRecentReviews(),
+  ]);
+  const featuredRatings = await getPlatformRatings(featuredFilms.map((film) => film.id));
 
   return (
     <main style={{ background: "#0a0a0e", color: "#eeeae4", overflowX: "hidden" }}>
@@ -384,7 +423,8 @@ export default async function Home() {
             Cada filme que você vê conta uma história sobre quem você é.
           </p>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: 42 }}>
-            <button
+            <Link
+              href="/filmes"
               className={styles.ctaHeroPrimary}
               style={{
                 fontFamily: "var(--font-lato), sans-serif",
@@ -395,27 +435,10 @@ export default async function Home() {
                 border: "none",
                 borderRadius: 4,
                 padding: "16px 32px",
-                cursor: "pointer",
-                boxShadow: "0 10px 34px rgba(192,57,43,0.45)",
-              }}
-            >
-              Comece seu diário
-            </button>
-            <Link
-              href="/filmes"
-              className={styles.ctaHeroSecondary}
-              style={{
-                fontFamily: "var(--font-lato), sans-serif",
-                fontWeight: 700,
-                fontSize: 16,
-                color: "#eeeae4",
-                background: "rgba(10,10,14,0.25)",
-                border: "1px solid rgba(238,234,228,0.42)",
-                borderRadius: 4,
-                padding: "16px 32px",
                 textDecoration: "none",
                 display: "inline-block",
-                backdropFilter: "blur(2px)",
+                cursor: "pointer",
+                boxShadow: "0 10px 34px rgba(192,57,43,0.45)",
               }}
             >
               Explorar filmes
@@ -536,18 +559,22 @@ export default async function Home() {
               Não foi possível carregar os filmes em destaque agora. Tente novamente em breve.
             </p>
           )}
-          {featuredFilms.map((film) => (
-            <Link key={film.id} href={`/filmes/${film.id}`} style={{ display: "block", textDecoration: "none" }}>
-              <MovieCard
-                title={film.title}
-                posterUrl={film.posterUrl}
-                genreLabel={film.genreLabel}
-                voteAverage={film.voteAverage}
-                director={film.director}
-                releaseDateLabel={film.releaseDateLabel}
-              />
-            </Link>
-          ))}
+          {featuredFilms.map((film) => {
+            const platform = featuredRatings.get(film.id);
+            return (
+              <Link key={film.id} href={`/filmes/${film.id}`} style={{ display: "block", textDecoration: "none" }}>
+                <MovieCard
+                  title={film.title}
+                  posterUrl={film.posterUrl}
+                  genreLabel={film.genreLabel}
+                  rating={platform?.average ?? 0}
+                  reviewCount={platform?.count ?? 0}
+                  director={film.director}
+                  releaseDateLabel={film.releaseDateLabel}
+                />
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -574,106 +601,135 @@ export default async function Home() {
         >
           Críticas recentes
         </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 24,
-          }}
-        >
-          {reviews.map((review) => (
-            <div
-              key={review.user}
-              className={styles.reviewCard}
-              style={{
-                border: "1px solid rgba(238,234,228,0.08)",
-                borderRadius: 8,
-                padding: 24,
-                background: "rgba(238,234,228,0.02)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <span
-                  style={{
-                    position: "relative",
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Image src={review.avatarUrl} alt={review.user} fill sizes="32px" style={{ objectFit: "cover" }} />
-                </span>
-                <div>
-                  <p
+        {recentReviews.length === 0 ? (
+          <p
+            style={{
+              fontFamily: "var(--font-lato), sans-serif",
+              fontSize: 14,
+              color: "rgba(238,234,228,0.5)",
+            }}
+          >
+            Ainda não há críticas na plataforma. Seja o primeiro a{" "}
+            <Link href="/filmes" style={{ color: "#d4a017", textDecoration: "none" }}>
+              avaliar um filme
+            </Link>
+            .
+          </p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 24,
+            }}
+          >
+            {recentReviews.map((review) => (
+              <div
+                key={review.id}
+                className={styles.reviewCard}
+                style={{
+                  border: "1px solid rgba(238,234,228,0.08)",
+                  borderRadius: 8,
+                  padding: 24,
+                  background: "rgba(238,234,228,0.02)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <span
                     style={{
-                      fontFamily: "var(--font-lato), sans-serif",
-                      fontWeight: 700,
-                      fontSize: 13,
-                      margin: 0,
+                      position: "relative",
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      background: reviewAvatarColor(review.userName),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {review.userAvatarUrl ? (
+                      <Image src={review.userAvatarUrl} alt={review.userName} fill sizes="32px" style={{ objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontFamily: "var(--font-bebas), sans-serif", fontSize: 15, color: "rgba(255,255,255,0.85)" }}>
+                        {reviewInitial(review.userName)}
+                      </span>
+                    )}
+                  </span>
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-lato), sans-serif",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        margin: 0,
+                        color: "#eeeae4",
+                      }}
+                    >
+                      {review.userName}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-space-mono), monospace",
+                        fontSize: 11,
+                        margin: 0,
+                        color: "rgba(238,234,228,0.4)",
+                      }}
+                    >
+                      {formatRelativeDate(review.createdAtIso)}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/filmes/${review.movieId}`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: "var(--font-playfair), serif",
+                      fontWeight: 600,
+                      fontStyle: "italic",
+                      fontSize: 17,
+                      margin: "0 0 8px",
                       color: "#eeeae4",
                     }}
                   >
-                    {review.user}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-space-mono), monospace",
-                      fontSize: 11,
-                      margin: 0,
-                      color: "rgba(238,234,228,0.4)",
-                    }}
-                  >
-                    {review.date}
-                  </p>
+                    {review.filmTitle}
+                  </h3>
+                </Link>
+                <div style={{ marginBottom: 10 }}>
+                  <RatingStars rating={String(review.rating)} />
                 </div>
+                <p
+                  style={{
+                    fontFamily: "var(--font-lato), sans-serif",
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                    color: "rgba(238,234,228,0.65)",
+                    margin: "0 0 12px",
+                  }}
+                >
+                  {review.excerpt.length > 240 ? `${review.excerpt.slice(0, 240).trim()}…` : review.excerpt}
+                </p>
+                <Link
+                  href={`/filmes/${review.movieId}`}
+                  className={styles.reviewBtn}
+                  style={{
+                    fontFamily: "var(--font-space-mono), monospace",
+                    fontSize: 11,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                    color: "rgba(238,234,228,0.5)",
+                    textDecoration: "none",
+                  }}
+                >
+                  Ler completo →
+                </Link>
               </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-playfair), serif",
-                  fontWeight: 600,
-                  fontStyle: "italic",
-                  fontSize: 17,
-                  margin: "0 0 8px",
-                  color: "#eeeae4",
-                }}
-              >
-                {review.filmTitle}
-              </h3>
-              <div style={{ marginBottom: 10 }}>
-                <RatingStars rating={review.rating} />
-              </div>
-              <p
-                style={{
-                  fontFamily: "var(--font-lato), sans-serif",
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "rgba(238,234,228,0.65)",
-                  margin: "0 0 12px",
-                }}
-              >
-                {review.excerpt}
-              </p>
-              <button
-                className={styles.reviewBtn}
-                style={{
-                  fontFamily: "var(--font-space-mono), monospace",
-                  fontSize: 11,
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                  color: "rgba(238,234,228,0.5)",
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              >
-                Ler completo →
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* DIARY + SIDEBAR */}

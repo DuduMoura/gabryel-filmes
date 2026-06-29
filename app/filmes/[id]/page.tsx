@@ -16,6 +16,8 @@ import {
 } from "@/lib/tmdb";
 import { SiteNav } from "@/components/SiteNav";
 import { RatingStars } from "@/components/RatingStars";
+import { prisma } from "@/lib/prisma";
+import { getPlatformRatings } from "@/lib/reviews";
 import styles from "./filme.module.css";
 
 async function loadMovie(idParam: string): Promise<TmdbMovieFull | null> {
@@ -99,11 +101,29 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
   const cast = movie.credits.cast.slice(0, 12);
   const gallery = movie.images.backdrops.slice(0, 6);
   const extraGalleryCount = movie.images.backdrops.length - gallery.length;
-  const reviews = movie.reviews.results.slice(0, 3);
-  const similar = await getSimilarMovies(movie).catch(() => []);
+  const [userReviews, similar] = await Promise.all([
+    prisma.review
+      .findMany({
+        where: { tmdbMovieId: movie.id },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        include: { user: true },
+      })
+      .catch((error) => {
+        console.error(`Falha ao buscar avaliações do filme ${movie.id}:`, error);
+        return [];
+      }),
+    getSimilarMovies(movie).catch(() => []),
+  ]);
+  const platformRatings = await getPlatformRatings([movie.id, ...similar.map((film) => film.id)]);
+  const similarRatings = platformRatings;
+  const movieRating = platformRatings.get(movie.id);
+  const platformAvg = movieRating?.average ?? 0;
+  const platformCount = movieRating?.count ?? 0;
 
   const circumference = 2 * Math.PI * 50;
-  const arcOffset = circumference * (1 - movie.vote_average / 10);
+  // O anel reflete a nota da plataforma (escala 0..5).
+  const arcOffset = circumference * (1 - platformAvg / 5);
 
   return (
     <main style={{ background: "#0a0a0e", color: "#eeeae4", minHeight: "100vh" }}>
@@ -169,9 +189,15 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
             {certification && <MetaPill>{certification}</MetaPill>}
             {runtime && <MetaPill>{runtime}</MetaPill>}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <RatingStars rating={(movie.vote_average / 2).toFixed(1)} />
-              <span style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 13, color: "#d4a017" }}>
-                {movie.vote_average.toFixed(1)}/10
+              <RatingStars rating={platformAvg.toFixed(1)} />
+              <span
+                style={{
+                  fontFamily: "var(--font-space-mono), monospace",
+                  fontSize: 13,
+                  color: platformCount > 0 ? "#d4a017" : "rgba(238,234,228,0.5)",
+                }}
+              >
+                {platformCount > 0 ? `${platformAvg.toFixed(1)}/5` : "Sem avaliações"}
               </span>
             </div>
           </div>
@@ -331,17 +357,19 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
             </svg>
             <div style={{ marginTop: -78, marginBottom: 56, textAlign: "center" }}>
               <p style={{ fontFamily: "var(--font-bebas), sans-serif", fontSize: 32, margin: 0, color: "#eeeae4" }}>
-                {movie.vote_average.toFixed(1)}
+                {platformCount > 0 ? platformAvg.toFixed(1) : "—"}
               </p>
               <p style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 10, margin: 0, color: "rgba(238,234,228,0.4)" }}>
-                / 10
+                / 5
               </p>
             </div>
             <p style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", color: "rgba(238,234,228,0.45)", margin: "0 0 4px", textAlign: "center" }}>
-              Nota TMDB
+              Nota ReelRate
             </p>
             <p style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 12, color: "rgba(238,234,228,0.4)", margin: 0, textAlign: "center" }}>
-              {formatVoteCount(movie.vote_count)} avaliações
+              {platformCount > 0
+                ? `${formatVoteCount(platformCount)} ${platformCount === 1 ? "avaliação" : "avaliações"}`
+                : "Seja o primeiro a avaliar"}
             </p>
           </div>
         </div>
@@ -444,61 +472,105 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
 
       {/* CRÍTICAS */}
       <section style={{ maxWidth: 1280, margin: "0 auto", padding: "0 48px 80px" }}>
-        <h2 style={{ fontFamily: "var(--font-bebas), sans-serif", fontSize: 32, letterSpacing: 1, margin: "0 0 28px", color: "#eeeae4" }}>
-          Críticas
-        </h2>
-        {reviews.length === 0 ? (
-          <p style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 14, color: "rgba(238,234,228,0.5)" }}>
-            Ainda não há críticas para este filme na TMDB.
-          </p>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
+          <h2 style={{ fontFamily: "var(--font-bebas), sans-serif", fontSize: 32, letterSpacing: 1, margin: 0, color: "#eeeae4" }}>
+            Críticas da comunidade
+          </h2>
+          {userReviews.length > 0 && (
+            <Link
+              href={`/filmes/${movie.id}/avaliar`}
+              className={styles.backLink}
+              style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 14, color: "#d4a017", textDecoration: "none" }}
+            >
+              ★ Escrever uma crítica →
+            </Link>
+          )}
+        </div>
+        {userReviews.length === 0 ? (
+          <div
+            style={{
+              border: "1px dashed rgba(238,234,228,0.15)",
+              borderRadius: 10,
+              padding: "40px 24px",
+              textAlign: "center",
+              background: "rgba(238,234,228,0.02)",
+            }}
+          >
+            <p style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 14, color: "rgba(238,234,228,0.55)", margin: "0 0 16px" }}>
+              Ainda não há críticas de usuários para este filme. Seja o primeiro a avaliar.
+            </p>
+            <Link
+              href={`/filmes/${movie.id}/avaliar`}
+              className={styles.btnRate}
+              style={{
+                fontFamily: "var(--font-lato), sans-serif",
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#d4a017",
+                background: "transparent",
+                border: "1px solid #d4a017",
+                borderRadius: 4,
+                padding: "12px 24px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              ★ Avaliar este filme
+            </Link>
+          </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
-            {reviews.map((review) => {
-              const rating = review.author_details.rating;
-              return (
-                <div
-                  key={review.id}
-                  className={styles.reviewCard}
-                  style={{ border: "1px solid rgba(238,234,228,0.08)", borderRadius: 8, padding: 24, background: "rgba(238,234,228,0.02)" }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                    <span
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        background: paletteColor(review.author.length),
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "var(--font-bebas), sans-serif",
-                        fontSize: 13,
-                        color: "rgba(255,255,255,0.85)",
-                      }}
-                    >
-                      {initials(review.author)}
-                    </span>
-                    <div>
-                      <p style={{ fontFamily: "var(--font-lato), sans-serif", fontWeight: 700, fontSize: 13, margin: 0, color: "#eeeae4" }}>
-                        {review.author}
-                      </p>
-                      <p style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 11, margin: 0, color: "rgba(238,234,228,0.4)" }}>
-                        {formatReviewDate(review.created_at)}
-                      </p>
-                    </div>
+            {userReviews.map((review) => (
+              <div
+                key={review.id}
+                className={styles.reviewCard}
+                style={{ border: "1px solid rgba(238,234,228,0.08)", borderRadius: 8, padding: 24, background: "rgba(238,234,228,0.02)" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <span
+                    style={{
+                      position: "relative",
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      background: paletteColor(review.user.name.length),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "var(--font-bebas), sans-serif",
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.85)",
+                    }}
+                  >
+                    {review.user.avatarUrl ? (
+                      <Image src={review.user.avatarUrl} alt={review.user.name} fill sizes="32px" style={{ objectFit: "cover" }} />
+                    ) : (
+                      initials(review.user.name)
+                    )}
+                  </span>
+                  <div>
+                    <p style={{ fontFamily: "var(--font-lato), sans-serif", fontWeight: 700, fontSize: 13, margin: 0, color: "#eeeae4" }}>
+                      {review.user.name}
+                    </p>
+                    <p style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 11, margin: 0, color: "rgba(238,234,228,0.4)" }}>
+                      {formatReviewDate(review.createdAt.toISOString())}
+                    </p>
                   </div>
-                  {rating !== null && (
-                    <div style={{ marginBottom: 10 }}>
-                      <RatingStars rating={(rating / 2).toFixed(1)} />
-                    </div>
-                  )}
-                  <p style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 14, lineHeight: 1.6, color: "rgba(238,234,228,0.65)", margin: 0 }}>
-                    {review.content.length > 280 ? `${review.content.slice(0, 280).trim()}…` : review.content}
-                  </p>
                 </div>
-              );
-            })}
+                <div style={{ marginBottom: review.comment ? 10 : 0 }}>
+                  <RatingStars rating={String(review.rating)} />
+                </div>
+                {review.comment && (
+                  <p style={{ fontFamily: "var(--font-playfair), serif", fontStyle: "italic", fontSize: 14, lineHeight: 1.6, color: "rgba(238,234,228,0.7)", margin: 0 }}>
+                    “{review.comment}”
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -512,6 +584,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
           <div className={styles.scrollRow} style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 8 }}>
             {similar.map((film) => {
               const filmPoster = getPosterUrl(film.poster_path);
+              const platform = similarRatings.get(film.id);
               return (
                 <Link
                   key={film.id}
@@ -538,9 +611,9 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                     {film.title}
                   </h3>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <RatingStars rating={(film.vote_average / 2).toFixed(1)} />
+                    <RatingStars rating={(platform?.average ?? 0).toFixed(1)} />
                     <span style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: 11, color: "rgba(238,234,228,0.4)" }}>
-                      {film.vote_average.toFixed(1)}
+                      {platform && platform.count > 0 ? platform.average.toFixed(1) : "Sem nota"}
                     </span>
                   </div>
                 </Link>
