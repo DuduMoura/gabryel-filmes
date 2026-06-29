@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AVATAR_OPTIONS } from "@/lib/avatars";
+
 /**
  * Schemas de validação compartilhados (validação server-side com Zod).
  * Centralizados aqui para reuso entre Route Handlers, Server Actions e o NextAuth.
@@ -24,6 +26,17 @@ export const reviewSchema = z.object({
   comment: z.string().max(2000).optional(),
 });
 
+// Edição do próprio perfil: nome e avatar (escolhido entre os pré-definidos em /public/avatars).
+// E-mail e senha não são editáveis aqui.
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, "Nome muito curto").max(80),
+  avatarUrl: z
+    .string()
+    .refine((value) => value === "" || AVATAR_OPTIONS.includes(value), "Avatar inválido")
+    .optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

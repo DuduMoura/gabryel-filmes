@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import styles from "@/app/page.module.css";
+import { ProfileMenu } from "@/components/ProfileMenu";
 
 const NAV_ITEMS = [
   { key: "filmes", label: "Filmes", href: "/filmes" },
@@ -64,24 +65,7 @@ export function SiteNav({ active }: { active?: "filmes" }) {
           );
         })}
         {isAuthenticated ? (
-          <button
-            type="button"
-            className={styles.ctaPrimary}
-            onClick={() => signOut({ callbackUrl: "/" })}
-            style={{
-              fontFamily: "var(--font-lato), sans-serif",
-              fontWeight: 700,
-              fontSize: 14,
-              color: "#fff",
-              background: "#c0392b",
-              border: "none",
-              borderRadius: 4,
-              padding: "10px 22px",
-              cursor: "pointer",
-            }}
-          >
-            Sair
-          </button>
+          <ProfileMenu />
         ) : (
           <Link
             href="/login"
