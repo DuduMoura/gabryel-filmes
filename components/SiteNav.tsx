@@ -7,8 +7,6 @@ import { ProfileMenu } from "@/components/ProfileMenu";
 
 const NAV_ITEMS = [
   { key: "filmes", label: "Filmes", href: "/filmes" },
-  { key: "diario", label: "Diário", href: "#" },
-  { key: "listas", label: "Listas", href: "#" },
   { key: "comunidade", label: "Comunidade", href: "/comunidade" },
 ] as const;
 

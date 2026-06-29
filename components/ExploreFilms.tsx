@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import styles from "@/app/filmes/explore.module.css";
@@ -38,9 +38,12 @@ const SORT_OPTIONS: { id: SortBy; label: string }[] = [
 
 const RANK_COLORS: Record<number, string> = { 1: "#d4a017", 2: "#c4c4c4", 3: "#b87333" };
 
+const PAGE_SIZE = 20;
+
 function formatReviews(n: number): string {
+  if (n === 0) return "Sem avaliações";
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}mil avaliações`;
-  return `${n} avaliações`;
+  return `${n} ${n === 1 ? "avaliação" : "avaliações"}`;
 }
 
 function LogoMark({ size = 22 }: { size?: number }) {
@@ -69,6 +72,12 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
   const [activeGenre, setActiveGenre] = useState("Todos");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [page, setPage] = useState(1);
+
+  // Volta para a primeira página sempre que os filtros/ordenação mudam.
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, activeGenre, search, sortBy]);
 
   const tabs = TAB_DEFS.map((tab) => ({
     ...tab,
@@ -102,6 +111,11 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
     if (sortBy === "title") return a.title.localeCompare(b.title);
     return b.reviews - a.reviews;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const paged = sorted.slice(pageStart, pageStart + PAGE_SIZE);
 
   const showRankBadges =
     activeTab === "top" && activeGenre === "Todos" && !query && sortBy === "rating";
@@ -389,6 +403,7 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
             </button>
           </div>
         ) : (
+          <>
           <div
             style={{
               display: "grid",
@@ -396,8 +411,8 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
               gap: 28,
             }}
           >
-            {sorted.map((film, index) => {
-              const rank = index + 1;
+            {paged.map((film, index) => {
+              const rank = pageStart + index + 1;
               const showRank = showRankBadges && rank <= 3;
               return (
                 <Link
@@ -436,13 +451,13 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
                         fontFamily: "var(--font-space-mono), monospace",
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#d4a017",
+                        color: film.reviews > 0 ? "#d4a017" : "rgba(238,234,228,0.55)",
                         background: "rgba(10,10,14,0.75)",
                         padding: "4px 8px",
                         borderRadius: 4,
                       }}
                     >
-                      {film.rating.toFixed(1)}
+                      {film.reviews > 0 ? film.rating.toFixed(1) : "—"}
                     </span>
                     <span
                       style={{
@@ -501,7 +516,7 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
                     {film.year}
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <RatingStars rating={(film.rating / 2).toFixed(1)} />
+                    <RatingStars rating={film.rating.toFixed(1)} />
                     <span
                       style={{
                         fontFamily: "var(--font-space-mono), monospace",
@@ -516,6 +531,82 @@ export function ExploreFilms({ films }: { films: ExploreFilm[] }) {
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <nav
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginTop: 48,
+              }}
+            >
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={styles.pageBtn}
+                style={{
+                  fontFamily: "var(--font-space-mono), monospace",
+                  fontSize: 12,
+                  color: currentPage === 1 ? "rgba(238,234,228,0.25)" : "#eeeae4",
+                  background: "transparent",
+                  border: "1px solid rgba(238,234,228,0.15)",
+                  borderRadius: 6,
+                  padding: "8px 14px",
+                  cursor: currentPage === 1 ? "default" : "pointer",
+                }}
+              >
+                ← Anterior
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => {
+                const isActive = pageNumber === currentPage;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setPage(pageNumber)}
+                    className={styles.pageBtn}
+                    style={{
+                      fontFamily: "var(--font-space-mono), monospace",
+                      fontSize: 12,
+                      minWidth: 38,
+                      color: isActive ? "#fff" : "rgba(238,234,228,0.6)",
+                      background: isActive ? "#c0392b" : "transparent",
+                      border: isActive
+                        ? "1px solid #c0392b"
+                        : "1px solid rgba(238,234,228,0.15)",
+                      borderRadius: 6,
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className={styles.pageBtn}
+                style={{
+                  fontFamily: "var(--font-space-mono), monospace",
+                  fontSize: 12,
+                  color: currentPage === totalPages ? "rgba(238,234,228,0.25)" : "#eeeae4",
+                  background: "transparent",
+                  border: "1px solid rgba(238,234,228,0.15)",
+                  borderRadius: 6,
+                  padding: "8px 14px",
+                  cursor: currentPage === totalPages ? "default" : "pointer",
+                }}
+              >
+                Próxima →
+              </button>
+            </nav>
+          )}
+          </>
         )}
       </section>
 

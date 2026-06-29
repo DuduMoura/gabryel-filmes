@@ -6,7 +6,8 @@ export type MovieCardProps = {
   title: string;
   posterUrl: string | null;
   genreLabel: string | null;
-  voteAverage: number;
+  rating: number;
+  reviewCount: number;
   director?: string | null;
   releaseDateLabel?: string | null;
 };
@@ -15,7 +16,8 @@ export function MovieCard({
   title,
   posterUrl,
   genreLabel,
-  voteAverage,
+  rating,
+  reviewCount,
   director,
   releaseDateLabel,
 }: MovieCardProps) {
@@ -97,15 +99,15 @@ export function MovieCard({
         </p>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <RatingStars rating={(voteAverage / 2).toFixed(1)} />
+        <RatingStars rating={String(rating)} />
         <span
           style={{
             fontFamily: "var(--font-space-mono), monospace",
             fontSize: 12,
-            color: "#d4a017",
+            color: reviewCount > 0 ? "#d4a017" : "rgba(238,234,228,0.4)",
           }}
         >
-          {voteAverage.toFixed(1)}/10
+          {reviewCount > 0 ? `${rating.toFixed(1)}/5` : "Sem avaliações"}
         </span>
       </div>
     </div>
